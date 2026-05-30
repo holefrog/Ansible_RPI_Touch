@@ -1,8 +1,3 @@
-好的，为您重新整合并生成了最终满血版的 `README.md`。这里将之前讨论的所有核心特性、完整的硬件接线对照表（音频+屏幕总表）、冲突规避方案以及自动化部署步骤全部收录其中。
-
-你可以直接点击代码块右上角的“复制”按钮，无损粘贴到你的项目中。
-
-```markdown
 # 🎵 Ansible_RPI_TouchPlayer
 
 将 Raspberry Pi 4B 打造为支持多音源的专业级无头 (Headless) 媒体播放器，配备 2.8 寸全彩触控屏。本项目基于 Ansible 实现全自动化、幂等性部署，并采用“纯 Python 轻量化”图形交互架构。
@@ -126,5 +121,3 @@ journalctl -u pipewire.service -f
 ## 🤝 贡献与许可
 * **许可证：** MIT License
 * Made with ❤️ for the maker and audiophile community.
-
-```
