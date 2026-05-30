@@ -1,0 +1,46 @@
+---
+- name: Install Bluetooth packages
+  become: yes
+  ansible.builtin.apt:
+    name:
+      - bluez
+      - bluez-tools
+    state: present
+
+- name: Hold Bluetooth packages to prevent automatic updates
+  become: yes
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - bluez
+    - bluez-tools
+
+- name: Backup existing bluetooth main.conf
+  become: yes
+  ansible.builtin.copy:
+    src: /etc/bluetooth/main.conf
+    dest: /etc/bluetooth/main.conf.bak
+    remote_src: yes
+    force: no
+  ignore_errors: yes
+
+- name: Update system bluetooth configuration
+  become: yes
+  ansible.builtin.template:
+    src: bluetooth-main.conf.j2
+    dest: /etc/bluetooth/main.conf
+    mode: '0644'
+  notify: restart bluetooth service
+
+- name: Unblock bluetooth via rfkill
+  become: yes
+  ansible.builtin.command: rfkill unblock bluetooth
+  changed_when: true
+
+- name: Enable and start system bluetooth service
+  become: yes
+  ansible.builtin.systemd:
+    name: bluetooth.service
+    state: started
+    enabled: yes

@@ -1,0 +1,22 @@
+---
+- name: Enable i2c_dev kernel module
+  become: yes
+  community.general.modprobe:
+    name: i2c_dev
+    state: present
+  ignore_errors: yes # Might fail in some environments without hardware
+
+- name: Ensure i2c_dev in /etc/modules
+  become: yes
+  ansible.builtin.lineinfile:
+    path: /etc/modules
+    line: "i2c_dev"
+    state: present
+
+- name: Configure hardware in boot config (I2C)
+  become: yes
+  ansible.builtin.lineinfile:
+    path: "{{ boot_config_file }}"
+    line: "dtparam=i2c_arm=on"
+    state: present
+  register: i2c_boot_config

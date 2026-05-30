@@ -1,0 +1,27 @@
+# WirePlumber 0.5.x+ Bluetooth configuration.
+# This is a SPA-JSON file, which is a relaxed version of JSON.
+# We use a more strict, quoted-and-comma-separated syntax for maximum compatibility.
+
+# Disable seat monitoring component in WirePlumber 0.5.x profiles
+wireplumber.profiles = {
+  main = {
+    monitor.bluez.seat-monitoring = disabled
+  }
+}
+
+# Properties for the bluez-monitor component
+monitor.bluez.properties = {
+  # 核心修复：禁用 logind 座位检测，强制在 headless 无头模式下加载蓝牙音频
+  "with-logind" = false
+
+  bluez5.enable-hw-volume = true
+  
+  # 蓝牙角色配置
+  bluez5.roles = [ "a2dp_sink", "a2dp_source" ]
+  bluez5.hfphsp-roles = [ ] # Disable HSP/HFP profiles to ensure A2DP is used
+  
+  # 支持的编解码器 (关闭 sbc_xq，部分安卓设备对该非标准格式兼容性极差，会导致无声)
+  bluez5.codecs = [ "sbc", "aac" ]
+  bluez5.enable-sbc-xq = false
+  bluez5.enable-msbc = false
+}

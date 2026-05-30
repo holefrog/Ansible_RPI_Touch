@@ -1,0 +1,25 @@
+---
+- name: Create OLED app directory
+  ansible.builtin.file:
+    path: "{{ oled_app_dir }}"
+    state: directory
+    mode: '0755'
+  become: no
+
+- name: Copy OLED application files (Python & Fonts)
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ oled_app_dir }}/"
+    mode: '0644'
+  with_fileglob:
+    - "*.py"
+    - "*.ttf"
+  become: no
+
+- name: Generate oled.ini configuration
+  ansible.builtin.template:
+    src: oled.ini.j2
+    dest: "{{ oled_app_dir }}/oled.ini"
+    mode: '0644'
+  become: no
+  notify: restart oled service

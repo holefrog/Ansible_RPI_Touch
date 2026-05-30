@@ -1,0 +1,10 @@
+---
+BT_NAME: "RPI-Bluetooth"
+CHECK_INTERVAL: "20"
+BT_INIT_DELAY: "2"
+BT_RFKILL_DELAY: "2"
+PINS_FILE: "{{ mediaplayer_home }}/.config/bluetooth-a2dp/pins.txt"
+SYSTEM_BIN_DIR: "/usr/local/bin"
+USER_NAME: "{{ mediaplayer_user }}"
+USER_ID: "{{ mediaplayer_uid }}"
+USER_RUNTIME_DIR: "{{ mediaplayer_runtime_dir }}"

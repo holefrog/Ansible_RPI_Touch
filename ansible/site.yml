@@ -1,0 +1,18 @@
+---
+- name: Deploy Raspberry Pi Media Player
+  # 这里的 hosts 对应了 inventory/hosts.ini 里的 [mediaplayers] 组
+  hosts: mediaplayers
+  gather_facts: yes
+  
+  # 按逻辑顺序串联所有角色
+  roles:
+    # 1. 基础系统与硬件配置（包含可能需要的重启）
+    - system
+    # 2. 核心音频驱动与路由
+    - pipewire
+    - volume
+    # 3. 各大播放源与展示应用
+    - squeezelite
+    - airplay
+    - bluetooth
+    - oled

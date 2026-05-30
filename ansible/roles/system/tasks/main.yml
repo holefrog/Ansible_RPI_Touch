@@ -1,0 +1,11 @@
+---
+# tasks file for system
+
+- name: Import system settings tasks
+  ansible.builtin.import_tasks: settings.yml
+
+- name: Import package management tasks
+  ansible.builtin.import_tasks: packages.yml
+
+- name: Import hardware configuration tasks
+  ansible.builtin.import_tasks: hardware.yml

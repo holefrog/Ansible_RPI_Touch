@@ -1,0 +1,39 @@
+---
+- name: Ensure Bluetooth A2DP config directory exists
+  ansible.builtin.file:
+    path: "{{ mediaplayer_home }}/.config/bluetooth-a2dp"
+    state: directory
+    mode: '0755'
+  become: no
+
+- name: Create PINs configuration file
+  ansible.builtin.copy:
+    content: "* *"
+    dest: "{{ PINS_FILE }}"
+    mode: '0600'
+  become: no
+
+- name: Install Bluetooth autopair script
+  become: yes
+  ansible.builtin.template:
+    src: bluetooth-a2dp-autopair.sh.j2
+    dest: "{{ SYSTEM_BIN_DIR }}/bluetooth-a2dp-autopair.sh"
+    mode: '0755'
+  notify: restart autopair service
+
+- name: Install Bluetooth autopair system service
+  become: yes
+  ansible.builtin.template:
+    src: bluetooth-a2dp-autopair.service.j2
+    dest: /etc/systemd/system/bluetooth-a2dp-autopair.service
+    mode: '0644'
+  notify: 
+    - reload systemd daemon
+    - restart autopair service
+
+- name: Enable and start Bluetooth autopair system service
+  become: yes
+  ansible.builtin.systemd:
+    name: bluetooth-a2dp-autopair.service
+    state: started
+    enabled: yes

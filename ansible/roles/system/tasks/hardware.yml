@@ -1,0 +1,18 @@
+---
+- name: Import I2C base hardware configuration
+  ansible.builtin.import_tasks: hw_i2c.yml
+
+- name: Import WM8960 audio hardware configuration
+  ansible.builtin.import_tasks: hw_wm8960.yml
+
+- name: Import OLED display hardware configuration
+  ansible.builtin.import_tasks: hw_oled.yml
+
+- name: Reboot to apply boot config changes
+  become: yes
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+  when: >
+    (i2c_boot_config is defined and i2c_boot_config.changed) or
+    (wm8960_boot_config is defined and wm8960_boot_config.results | default([]) | selectattr('changed') | list | length > 0) or
+    (oled_boot_config is defined and oled_boot_config.changed)

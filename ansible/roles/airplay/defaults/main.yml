@@ -1,0 +1,8 @@
+---
+AIRPLAY_NAME: "RPI-AirPlay"
+AIRPLAY_PORT: "5000"
+ALSA_DEVICE: "default"
+INITIAL_VOLUME: "60"
+METADATA_PIPE: "/tmp/shairport-sync-metadata"
+USER_RUNTIME_DIR: "{{ mediaplayer_runtime_dir }}"
+airplay_default_sink_volume: "100"

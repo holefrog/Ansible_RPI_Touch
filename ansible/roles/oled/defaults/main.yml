@@ -1,0 +1,19 @@
+---
+# defaults file for oled
+oled_width: 128
+oled_height: 64
+oled_bus: 3
+oled_address: "0x3C"
+oled_log_level: "INFO"
+
+# Default paths
+oled_app_base_dir: "{{ mediaplayer_home }}/rpi-mediaplayer"
+oled_app_dir: "{{ oled_app_base_dir }}/oled"
+oled_venv_dir: "{{ mediaplayer_home }}/.venv/oled"
+metadata_pipe: "/tmp/shairport-sync-metadata"
+
+# Hardware test
+oled_test_timeout: 25
+
+# User runtime path for systemd service template
+user_runtime_dir: "{{ mediaplayer_runtime_dir }}"

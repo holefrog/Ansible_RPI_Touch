@@ -1,0 +1,24 @@
+---
+- name: Generate OLED hardware test script
+  ansible.builtin.template:
+    src: oled_test.py.j2
+    dest: "/usr/local/bin/oled_display.py"
+    mode: '0755'
+  become: yes
+
+- name: Run OLED hardware test
+  ansible.builtin.command: "{{ oled_venv_dir }}/bin/python /usr/local/bin/oled_display.py"
+  become: no
+  async: "{{ oled_test_timeout }}"
+  poll: 0
+  register: oled_test_job
+  when: i2c_dev.stat.exists
+
+- name: Wait for OLED hardware test to finish
+  ansible.builtin.async_status:
+    jid: "{{ oled_test_job.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished
+  retries: "{{ oled_test_timeout }}"
+  delay: 1
+  when: i2c_dev.stat.exists and oled_test_job is defined and oled_test_job.ansible_job_id is defined

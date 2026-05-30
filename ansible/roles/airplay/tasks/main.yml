@@ -1,0 +1,77 @@
+---
+# tasks file for airplay
+
+- name: Install Shairport-Sync package
+  become: yes
+  ansible.builtin.apt:
+    name: shairport-sync
+    state: present
+
+- name: Configure systemd-tmpfiles for metadata pipe (survives reboot)
+  become: yes
+  ansible.builtin.copy:
+    dest: /etc/tmpfiles.d/shairport-sync-metadata.conf
+    content: "p {{ METADATA_PIPE }} 0664 {{ mediaplayer_user }} {{ mediaplayer_user }} -"
+    mode: '0644'
+
+- name: Ensure metadata pipe is created now via tmpfiles
+  become: yes
+  ansible.builtin.command: systemd-tmpfiles --create /etc/tmpfiles.d/shairport-sync-metadata.conf
+  changed_when: false
+
+- name: Ensure Shairport-Sync config directory exists
+  become: yes
+  ansible.builtin.file:
+    path: /etc/shairport-sync
+    state: directory
+    mode: '0755'
+
+- name: Generate Shairport-Sync config
+  become: yes
+  ansible.builtin.template:
+    src: shairport-sync.conf.j2
+    dest: /etc/shairport-sync/shairport-sync.conf
+    mode: '0644'
+  notify: restart airplay service
+
+- name: Disable system-wide Shairport-Sync service
+  become: yes
+  ansible.builtin.systemd:
+    name: shairport-sync.service
+    state: stopped
+    enabled: no
+    masked: yes
+  ignore_errors: yes
+
+- name: Ensure user systemd directory exists
+  ansible.builtin.file:
+    path: "{{ mediaplayer_home }}/.config/systemd/user"
+    state: directory
+    mode: '0755'
+  become: no
+
+- name: Generate systemd user service for Shairport-Sync
+  ansible.builtin.template:
+    src: shairport-sync.service.j2
+    dest: "{{ mediaplayer_home }}/.config/systemd/user/shairport-sync.service"
+    mode: '0644'
+  become: no
+  notify: 
+    - reload systemd user daemon
+    - restart airplay service
+
+- name: Enable and start Shairport-Sync user service
+  ansible.builtin.systemd:
+    name: shairport-sync.service
+    state: started
+    enabled: yes
+    scope: user
+  become: no
+
+- name: Initialize default PipeWire sink volume
+  ansible.builtin.command: "pactl set-sink-volume @DEFAULT_SINK@ {{ airplay_default_sink_volume | default('100') }}%"
+  environment:
+    XDG_RUNTIME_DIR: "{{ mediaplayer_runtime_dir }}"
+  become: no
+  changed_when: true
+  ignore_errors: yes

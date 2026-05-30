@@ -1,0 +1,12 @@
+---
+# defaults file for system
+timezone: "America/Vancouver"
+auto_update: "yes"
+
+# Boot config
+boot_config_file: "/boot/firmware/config.txt"
+
+# OLED GPIO Config (for boot config)
+oled_bus: 3
+oled_sda_pin: 4
+oled_scl_pin: 5

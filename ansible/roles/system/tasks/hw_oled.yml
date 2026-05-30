@@ -1,0 +1,8 @@
+---
+- name: Configure OLED GPIO in boot config
+  become: yes
+  ansible.builtin.lineinfile:
+    path: "{{ boot_config_file }}"
+    line: "dtoverlay=i2c-gpio,bus={{ oled_bus }},i2c_gpio_sda={{ oled_sda_pin }},i2c_gpio_scl={{ oled_scl_pin }}"
+    state: present
+  register: oled_boot_config

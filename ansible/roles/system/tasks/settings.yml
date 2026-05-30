@@ -1,0 +1,48 @@
+---
+- name: Ensure media player user has passwordless sudo
+  become: yes
+  ansible.builtin.lineinfile:
+    path: "/etc/sudoers.d/010_{{ mediaplayer_user }}-nopasswd"
+    state: present
+    create: yes
+    mode: '0440'
+    line: "{{ mediaplayer_user }} ALL=(ALL) NOPASSWD: ALL"
+    validate: 'visudo -cf %s'
+
+- name: Enable user Linger mode (Required for user systemd services)
+  become: yes
+  ansible.builtin.command: "loginctl enable-linger {{ mediaplayer_user }}"
+  changed_when: false
+
+- name: Set system timezone
+  become: yes
+  ansible.builtin.command: "timedatectl set-timezone {{ system_timezone | default('America/Vancouver') }}"
+  changed_when: false
+
+- name: Ensure en_GB.UTF-8 locale is enabled
+  become: yes
+  ansible.builtin.lineinfile:
+    path: /etc/locale.gen
+    regexp: '^#?\s*en_GB\.UTF-8\s+UTF-8'
+    line: 'en_GB.UTF-8 UTF-8'
+  register: locale_gen
+
+- name: Generate locales
+  become: yes
+  ansible.builtin.command: locale-gen
+  when: locale_gen.changed
+
+- name: Add bash alias ll='ls -l'
+  ansible.builtin.lineinfile:
+    path: "{{ mediaplayer_home }}/.bashrc"
+    line: "alias ll='ls -l'"
+    state: present
+  become: no
+
+- name: Add bash alias for checking all media services status
+  ansible.builtin.lineinfile:
+    path: "{{ mediaplayer_home }}/.bashrc"
+    line: "alias check_status='systemctl --user status pipewire wireplumber squeezelite shairport-sync oled volume && systemctl status bluetooth bluetooth-a2dp-autopair'"
+    state: present
+    create: yes
+  become: no

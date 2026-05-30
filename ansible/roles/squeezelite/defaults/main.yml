@@ -1,0 +1,8 @@
+---
+SYSTEM_BIN_DIR: "/usr/local/bin"
+PLAYER_NAME: "RPI-Squeeze"
+PLAYER_MAC: "{{ player_mac }}"
+SERVER_IP: "{{ lms_server_ip }}"
+ALSA_DEVICE: "default"
+EXTRA_ARGS: "-a 40:4:32:0 -b 500:5000"
+PIPEWIRE_TIMEOUT: "30"

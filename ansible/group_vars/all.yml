@@ -1,0 +1,16 @@
+---
+# Use wlan0 MAC if available, fallback to eth0, then to default route interface to prevent HA duplication
+player_mac: "{{ (ansible_wlan0 | default({})).macaddress | default((ansible_eth0 | default({})).macaddress) | default(ansible_default_ipv4.macaddress) }}"
+
+# Global LMS Server configuration
+lms_server_ip: "192.168.50.210"
+lms_server_port: "9000"
+
+# 用户信息（统一来源）
+mediaplayer_user: "{{ ansible_user_id }}"          # 字符串用户名
+mediaplayer_uid: "{{ ansible_user_uid }}"           # 数字 UID
+mediaplayer_home: "{{ ansible_env.HOME }}"          # 用户 HOME（非 become 上下文）
+mediaplayer_runtime_dir: "/run/user/{{ ansible_user_uid }}"
+
+# 系统配置
+system_timezone: "America/Vancouver"

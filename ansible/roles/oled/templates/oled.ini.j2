@@ -1,0 +1,42 @@
+# ============================================
+# OLED 显示服务完整配置文件
+# ============================================
+[SERVER]
+HOST_IP = {{ lms_server_ip }}
+HOST_Port = {{ lms_server_port }}
+PLAYER_ID = {{ player_mac }}
+
+[OLED]
+# 硬件配置
+bus = {{ oled_bus }}
+address = {{ oled_address }}
+width = {{ oled_width }}
+height = {{ oled_height }}
+
+# 🆕 日志级别 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+log_level = {{ oled_log_level }}
+
+[DISPLAY]
+# 字体配置
+font_path = ./msyh.ttf
+font_small_size = 14
+font_large_size = 22
+
+# 亮度配置 (0-255)
+default_brightness = 255
+dim_brightness = 8
+
+# 滚动配置
+scroll_step = 2              
+scroll_speed_playing = 0.004 
+scroll_speed_static = 0.02   
+
+[SCREENSAVER]
+dim_timeout = 5    
+off_timeout = 900  
+
+[VOLUME]
+popup_duration = 2.5
+
+[AIRPLAY]
+metadata_pipe = {{ metadata_pipe }}

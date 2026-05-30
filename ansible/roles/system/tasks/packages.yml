@@ -1,0 +1,21 @@
+---
+- name: Install base hardware and audio utilities
+  become: yes
+  ansible.builtin.apt:
+    name:
+      - i2c-tools
+      - unattended-upgrades
+      - libasound2t64  # Or libasound2 based on OS version
+      - alsa-utils
+      - pulseaudio-utils
+    state: present
+    update_cache: yes
+
+- name: Enable unattended-upgrades (Auto Update)
+  become: yes
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    mode: '0644'
