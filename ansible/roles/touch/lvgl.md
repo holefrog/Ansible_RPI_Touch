@@ -59,6 +59,8 @@ cd /home/david/Coding/Ansible_RPI_Touch/tools/lv_port_pc_vscode
 ln -s ../../src/ui_custom ui_custom
 ```
 
+> 如果你使用本仓库提供的构建脚本 `tools/build_lv_port_pc_vscode.sh`，它会自动在子模块中创建临时 `ui_custom` 链接，所以不必手动建立。
+
 ### 2.3 修改仿真底座 CMake 配置
 
 建议在 `tools/lv_port_pc_vscode/CMakeLists.txt` 中增加对自定义目录的扫描：
