@@ -76,19 +76,51 @@ add_executable(main ${CUSTOM_UI_SOURCES})
 
 在仿真底座目录执行：
 
+在第一次构建前，务必初始化并更新 Git 子模块（这会检出 `lvgl` 源代码）：
+
+```bash
+cd /home/david/Coding/Ansible_RPI_Touch
+git submodule update --init --recursive
+```
+
+如果你之前已经添加了子模块但目录为空，运行上面命令会填充 `tools/lv_port_pc_vscode/lvgl`。
+
+然后在仿真底座目录进行构建：
+
 ```bash
 cd /home/david/Coding/Ansible_RPI_Touch/tools/lv_port_pc_vscode
+rm -rf build
 mkdir -p build && cd build
 cmake ..
 make -j$(nproc)
 ```
+
+提示：
+
+- 如果遇到类似 “`add_subdirectory(lvgl)` 找不到 CMakeLists.txt” 或 “target lvgl 未构建” 的错误，通常是子模块未初始化导致，请先运行 `git submodule update --init --recursive`。
+- 如果遇到 “add_executable cannot create target \"main\" because another target with the same name already exists” 的错误，说明 `CMakeLists.txt` 中同时为底座和自定义 UI 创建了 `main` 目标。项目已修正为将 `ui_custom` 源追加到 `MAIN_SOURCES`（避免重复 `add_executable(main ...)`）。如果你修改过底座 `CMakeLists.txt`，请恢复或合并为单一 `add_executable(main ...)`。
+
+在构建失败时的快速诊断：
+
+```bash
+# 查看 lvgl 目录是否存在且包含 CMakeLists.txt
+ls -la tools/lv_port_pc_vscode/lvgl | head
+
+# 清理并重新运行 cmake，观察配置输出中的错误信息
+rm -rf tools/lv_port_pc_vscode/build
+mkdir -p tools/lv_port_pc_vscode/build && cd tools/lv_port_pc_vscode/build
+cmake .. 2>&1 | tee cmake_config.log
+grep -i error cmake_config.log || true
+```
+
+如需，我可以在你确认后远程帮你执行上述构建命令并排查具体错误（注意构建可能会耗时）。
 
 ### 3.2 启动仿真窗口
 
 编译成功后，运行：
 
 ```bash
-./main
+./tools/lv_port_pc_vscode/bin/main
 ```
 
 这会打开 SDL2 窗口，渲染 LVGL 画布。
