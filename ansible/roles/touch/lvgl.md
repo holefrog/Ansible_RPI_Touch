@@ -115,6 +115,35 @@ grep -i error cmake_config.log || true
 
 如需，我可以在你确认后远程帮你执行上述构建命令并排查具体错误（注意构建可能会耗时）。
 
+#### 在父仓库使用提供的构建脚本（推荐）
+
+项目包含一个便捷脚本和 override，用于在不修改子模块远端的情况下应用修正并构建：
+
+- 覆盖文件：`tools/overrides/lv_port_pc_vscode/CMakeLists.override`
+- 构建脚本：`tools/build_lv_port_pc_vscode.sh`
+
+用法（在项目根执行）：
+
+```bash
+# 临时应用 override、构建、然后恢复子模块原始 CMakeLists.txt
+./tools/build_lv_port_pc_vscode.sh
+
+# 若希望保留 override（子模块内会被替换，不会自动提交）
+./tools/build_lv_port_pc_vscode.sh --keep
+```
+
+注意事项：
+
+- 如果子模块 `tools/lv_port_pc_vscode` 中对 `CMakeLists.txt` 已有本地未提交修改，脚本可能无法正确恢复，请先检查并还原：
+
+```bash
+git -C tools/lv_port_pc_vscode status --porcelain
+git -C tools/lv_port_pc_vscode restore CMakeLists.txt
+```
+
+- 若需把修正永久共享给其他人，应 fork 或在子模块上有写权限并向子模块仓库提交；另可通过更新父仓库的 `.gitmodules` 指向你的 fork。
+
+
 ### 3.2 启动仿真窗口
 
 编译成功后，运行：
