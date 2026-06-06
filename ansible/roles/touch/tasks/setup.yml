@@ -1,0 +1,23 @@
+---
+- name: Install C build dependencies for touch GUI
+  become: yes
+  ansible.builtin.apt:
+    name:
+      - build-essential
+      - cmake
+      - pkg-config
+      - libsdl2-dev
+      - libfreetype6-dev
+      - libglib2.0-dev
+      - libudev-dev
+      - libx11-dev
+      - libxkbcommon-dev
+    state: present
+    update_cache: yes
+
+- name: Ensure touch GUI application directory exists
+  ansible.builtin.file:
+    path: "{{ touch_app_dir }}"
+    state: directory
+    mode: '0755'
+  become: no

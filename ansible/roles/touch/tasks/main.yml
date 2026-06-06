@@ -1,0 +1,6 @@
+---
+# tasks file for touch role
+- import_tasks: setup.yml
+- import_tasks: app.yml
+- import_tasks: hardware.yml
+- import_tasks: service.yml

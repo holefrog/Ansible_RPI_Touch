@@ -1,0 +1,33 @@
+---
+- name: Enable SPI on Raspberry Pi
+  become: yes
+  ansible.builtin.lineinfile:
+    path: "{{ boot_config_file }}"
+    line: "dtparam=spi=on"
+    state: present
+  register: touch_spi_boot_config
+
+- name: Enable I2C on Raspberry Pi
+  become: yes
+  ansible.builtin.lineinfile:
+    path: "{{ boot_config_file }}"
+    line: "dtparam=i2c_arm=on"
+    state: present
+  register: touch_i2c_arm_boot_config
+
+- name: Configure software I2C overlay for touch controller
+  become: yes
+  ansible.builtin.lineinfile:
+    path: "{{ boot_config_file }}"
+    line: "dtoverlay={{ touch_i2c_overlay }}"
+    state: present
+  register: touch_i2c_overlay_boot_config
+
+- name: Reboot to apply touch hardware configuration
+  become: yes
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+  when: >
+    touch_spi_boot_config.changed or
+    touch_i2c_arm_boot_config.changed or
+    touch_i2c_overlay_boot_config.changed

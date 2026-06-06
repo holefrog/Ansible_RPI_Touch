@@ -21,7 +21,7 @@
         - wireplumber
         - squeezelite
         - shairport-sync
-        - oled
+        - touch_gui
         - volume
       environment:
         XDG_RUNTIME_DIR: "{{ mediaplayer_runtime_dir | default('/run/user/1000') }}"

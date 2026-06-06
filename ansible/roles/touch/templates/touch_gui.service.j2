@@ -1,0 +1,16 @@
+[Unit]
+Description=Touch GUI service for LVGL display
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Environment="XDG_RUNTIME_DIR={{ mediaplayer_runtime_dir }}"
+WorkingDirectory={{ touch_app_dir }}
+ExecStart={{ touch_build_dir }}/touch_gui
+Restart=always
+RestartSec=10
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=default.target

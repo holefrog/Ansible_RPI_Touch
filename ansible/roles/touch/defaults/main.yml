@@ -1,0 +1,20 @@
+---
+# defaults file for touch role
+# Touch display geometry and device parameters
+touch_width: 480
+touch_height: 320
+touch_spi_device: "/dev/spidev0.0"
+touch_spi_speed_hz: 40000000
+
+# Soft I2C touch controller configuration
+touch_i2c_bus: 3
+touch_i2c_sda_pin: 4
+touch_i2c_scl_pin: 5
+touch_i2c_overlay: "i2c-gpio,bus={{ touch_i2c_bus }},i2c_gpio_sda={{ touch_i2c_sda_pin }},i2c_gpio_scl={{ touch_i2c_scl_pin }}"
+
+touch_app_base_dir: "{{ mediaplayer_home }}/rpi-mediaplayer"
+touch_app_dir: "{{ touch_app_base_dir }}/touch_gui"
+touch_build_dir: "{{ touch_app_dir }}/build"
+touch_service_name: "touch_gui.service"
+touch_service_unit: "{{ mediaplayer_home }}/.config/systemd/user/{{ touch_service_name }}"
+touch_compile_threads: 4
