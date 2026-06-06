@@ -58,7 +58,10 @@ void lv_demo_widgets(void)
     lv_obj_t * col = lv_obj_create(box);
     lv_obj_remove_style_all(col);
     lv_obj_set_size(col, lv_pct(100), lv_pct(100));
-    lv_obj_set_layout(col, LV_LAYOUT_COLUMN_MID);
+    lv_obj_set_flex_flow(col, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(col, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+    lv_obj_set_style_pad_row(col, 6, 0);
+    lv_obj_set_style_pad_column(col, 6, 0);
     lv_obj_set_scrollbar_mode(col, LV_SCROLLBAR_MODE_OFF);
 
     const char * lines[] = {
