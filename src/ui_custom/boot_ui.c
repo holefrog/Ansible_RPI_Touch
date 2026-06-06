@@ -1,5 +1,6 @@
 #include "boot_ui.h"
 #include "lvgl/lvgl.h"
+#include "lvgl/drivers/sdl/lv_sdl_window.h"
 
 /* A simple boot screen that mimics the provided image: progress bar at top,
    a boxed list of status lines with colored tags on the left.
@@ -8,6 +9,12 @@
 
 void lv_demo_widgets(void)
 {
+    /* Ensure 2x zoom for easier debugging when running on PC */
+    lv_display_t * disp = lv_display_get_default();
+    if(disp) {
+        lv_sdl_window_set_zoom(disp, 2);
+    }
+
     /* Use the active screen */
     lv_obj_t * scr = lv_scr_act();
     lv_obj_clean(scr);
