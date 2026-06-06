@@ -1,0 +1,149 @@
+# LVGL 仿真调试指南（Ubuntu）
+
+本文件说明如何在 Ubuntu 宿主机上安装 LVGL 开发环境，并使用 SDL2 仿真调试 480x320 电容触摸屏界面。
+
+> 本指南适用于当前项目的 `touch` 角色开发阶段。我们当前只做方案设计与基础界面规划，不做编码实现。
+
+## 1. 环境准备
+
+### 1.1 系统要求
+
+- Ubuntu 20.04 / 22.04 / 24.04
+- 已安装常规开发工具：`gcc`、`g++`、`cmake`、`make`
+- 推荐使用 WSL2 以外的本机 Ubuntu，避免鼠标/SDL 输入映射兼容性问题
+
+### 1.2 安装依赖
+
+打开终端，依次执行：
+
+```bash
+sudo apt update
+sudo apt install -y build-essential cmake pkg-config git 
+    libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libfreetype6-dev libglib2.0-dev libudev-dev libx11-dev libxkbcommon-dev
+```
+
+说明：
+- `libsdl2-dev` 用于 SDL2 窗口与鼠标仿真
+- `libsdl2-image-dev` 用于加载图片资源（可选，后续如果需要 PNG/图标支持）
+- `libfreetype6-dev` 用于 LVGL 字体渲染
+
+## 2. LVGL 仿真开发准备
+
+### 2.1 获取 LVGL 仿真底座
+
+如果项目还没有 `tools/lv_port_pc_vscode` 子模块，可按下面流程准备：
+
+```bash
+cd /home/david/Coding/Ansible_RPI_Touch
+git submodule add https://github.com/lvgl/lv_port_pc_vscode.git tools/lv_port_pc_vscode
+```
+
+如果已经有该目录，则只需更新子模块：
+
+```bash
+git submodule update --init --recursive
+```
+
+### 2.2 准备自定义 UI 源码目录
+
+建议把 C UI 业务代码放在项目中的独立目录，例如：
+
+```text
+src/ui_custom/
+```
+
+仿真底座与业务代码的关系可以通过软连接或 CMake 包含方式建立：
+
+```bash
+cd /home/david/Coding/Ansible_RPI_Touch/tools/lv_port_pc_vscode
+ln -s ../../src/ui_custom ui_custom
+```
+
+### 2.3 修改仿真底座 CMake 配置
+
+建议在 `tools/lv_port_pc_vscode/CMakeLists.txt` 中增加对自定义目录的扫描：
+
+```cmake
+file(GLOB_RECURSE CUSTOM_UI_SOURCES "${PROJECT_SOURCE_DIR}/ui_custom/*.c")
+add_executable(main ${CUSTOM_UI_SOURCES})
+```
+
+这样后续只需把 UI 源文件放到 `src/ui_custom/`，不必每次修改底座工程。
+
+## 3. 运行仿真
+
+### 3.1 编译仿真程序
+
+在仿真底座目录执行：
+
+```bash
+cd /home/david/Coding/Ansible_RPI_Touch/tools/lv_port_pc_vscode
+mkdir -p build && cd build
+cmake ..
+make -j$(nproc)
+```
+
+### 3.2 启动仿真窗口
+
+编译成功后，运行：
+
+```bash
+./main
+```
+
+这会打开 SDL2 窗口，渲染 LVGL 画布。
+
+### 3.3 保持 480x320 逻辑坐标
+
+为了保证 UI 逻辑与树莓派真机一致，仿真程序应当：
+
+- 内部画布尺寸固定为 `480x320`
+- 仅在 SDL 窗口层做缩放显示
+
+如果 SDL 窗口太小，可在仿真层增加窗口放大倍率，例如 `2x`，但坐标逻辑仍然保持 `480x320`。
+
+## 4. 触摸与输入仿真
+
+### 4.1 鼠标代替触摸
+
+在 PC 仿真过程中，鼠标左键直接映射为触摸按下，松开映射为触摸释放。
+
+如果 SDL 仿真底座支持手势或多点，则可继续扩展，但当前阶段只需验证单点点击和拖拽即可。
+
+### 4.2 坐标映射原则
+
+- 物理屏幕坐标：`480x320`
+- 仿真窗口可放大显示，但 UI 内部坐标保持不变
+- 例如：显示窗口 `960x640` 时，鼠标位置应按 `2x` 缩放映射回 LVGL 画布
+
+## 5. 常见问题与调试
+
+### 5.1 SDL2 无法创建窗口
+
+检查是否正确安装 `libsdl2-dev`，并确认当前用户具备 X11/Wayland 显示权限。
+
+### 5.2 字体显示不正常
+
+确认已安装 `libfreetype6-dev`，并在 LVGL 仿真程序中使用正确的字体文件路径。
+
+### 5.3 画面显示不对齐
+
+请确认仿真程序内部画布尺寸为 `480x320`，不要把宿主机窗口的像素尺寸直接当成 LVGL 逻辑尺寸。
+
+## 6. 与当前项目的关系
+
+当前我们只做方案设计与基础界面规划，目标是：
+
+- 在 Ubuntu 上验证 UI 布局和状态机设计
+- 让 PC 仿真和真机真屏共享同一套业务设计思路
+- 保持 `oled` 代码作为现有业务逻辑参考，暂不迁移
+
+## 7. 后续工作建议
+
+- 当仿真设计验证通过后，再逐步将 `touch` 角色中的 `files/` 目录补齐为实际的 C/LVGL 模块骨架
+- 真机阶段再由 `system` 角色负责底层 SPI/I2C 启用与 boot config
+- `touch` 角色继续负责 GUI 应用层和 systemd 服务部署
+
+---
+
+本文件仅作为 Ubuntu 上 LVGL 仿真调试的说明，不包含具体编码实现。

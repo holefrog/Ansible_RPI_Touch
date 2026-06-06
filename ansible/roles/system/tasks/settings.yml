@@ -42,7 +42,7 @@
 - name: Add bash alias for checking all media services status
   ansible.builtin.lineinfile:
     path: "{{ mediaplayer_home }}/.bashrc"
-    line: "alias check_status='systemctl --user status pipewire wireplumber squeezelite shairport-sync oled volume && systemctl status bluetooth bluetooth-a2dp-autopair'"
+    line: "alias check_status='systemctl --user status pipewire wireplumber squeezelite shairport-sync touch_gui volume && systemctl status bluetooth bluetooth-a2dp-autopair'"
     state: present
     create: yes
   become: no
