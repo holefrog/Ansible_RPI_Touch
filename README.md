@@ -49,12 +49,16 @@
 
 ---
 
-## 🧩 核心硬件接线指南 (Pinout Guide)
+---
+
+## 🧩 硬件装配指南 (Hardware Guide)
+
+### 🧩 核心硬件接线指南 (Pinout Guide)
 
 > **⚠️ 架构警告 (冲突规避)**
 > 本项目同时挂载了 SPI 触摸屏与 I2S 音频板。**绝对不能**按照屏幕官方维基的默认方式连接！请严格遵循以下两张接线表，我们已从物理层和软件层彻底解决了总线冲突。
 
-### 1. WM8960 音频板 (独占硬 I2C-1 与 I2S)
+#### 1. WM8960 音频板 (独占硬 I2C-1 与 I2S)
 作为核心发声单元，音频板保持独占树莓派的标准音频与控制总线。
 *(注：保留 38 脚录音数据线是为了满足 Linux ALSA 驱动的全双工初始化自检，防止底层报错)*
 
@@ -69,7 +73,7 @@
 | **PIN 40** (BCM 21) | `➔ 发送 ➔` | **DAC (RXSDA)** | **播放：** 将树莓派的数字音频推给声卡发声 |
 | **PIN 38** (BCM 20) | `⬅ 接收 ⬅` | **ADC (TXSDA)** | **录音：** 声卡麦克风数据发给树莓派 (迎合驱动自检) |
 
-### 2. SPI 彩色电容触摸屏 (SPI0 + 硬件 I2C-3 + PWM1)
+#### 2. SPI 彩色电容触摸屏 (SPI0 + 硬件 I2C-3 + PWM1)
 产品资料: [https://www.waveshare.net/wiki/3.5inch_Capacitive_Touch_LCD?hl=zh-CN]
 
 显示采用标准 SPI 推流，触控采用树莓派 4B 原生的独立硬件 I2C-3 总线（完全物理隔离音频总线），同时采用**纯轮询模式**放弃中断引脚。
@@ -94,58 +98,65 @@
 
 ---
 
-## 📦 手动安装依赖与运行指南 (Manual Setup & Dependencies)
+### 🌟 树莓派屏幕背光闪烁彻底解决与硬件 PWM 配置指南
 
-如果你不使用 Ansible，需要在树莓派上直接运行 `3.5inch_Capacitive_Touch_LCD.py` Demo，请遵循以下环境配置步骤（特别针对基于 Debian 12 Bookworm 的最新 Raspberry Pi OS）：
+#### 1. 为什么背光会闪烁？
 
-### 1. 开启 SPI 和 I2C 接口
-树莓派默认关闭这些硬件接口，会导致运行报错 `No such file or directory`。运行前必须开启：
-```bash
-sudo raspi-config
-# 选择 3 Interface Options -> I4 SPI -> Yes
-# 选择 3 Interface Options -> I5 I2C -> Yes
-sudo reboot
+软件 PWM 依赖 CPU 线程调度模拟方波，在系统负载突增时会发生毫秒级调度延迟，在低占空比下（< 5%）导致整个高电平脉冲被"吞掉"，产生明显闪烁。
+
+**终极解决方案**：启用树莓派原生的**硬件定时器芯片 (Hardware PWM)** 接管背光引脚。
+
+#### 2. 如何开启硬件 PWM (以 BCM 13 引脚为例)
+
+编辑 `/boot/firmware/config.txt`：
+
+```ini
+# Enable PWM for Backlight Control on BCM 13
+dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4
 ```
 
-### 2. 安装 Python 系统级依赖
-由于最新树莓派系统引入了 PEP 668 保护机制，禁止 `pip` 全局安装。同时，新系统内核弃用了旧的 sysfs GPIO 接口。因此我们必须使用 `apt` 安装，并**使用 `rpi-lgpio` 替代旧的 `RPi.GPIO`**：
-```bash
-# 1. 修复可能损坏的包状态（例如因为 32位 库导致的未满足依赖）
-sudo apt --fix-broken install -y
+> **⚠️ BCM 12 与 BCM 13 双通道绑定**：`pwm-2chan` 会同时强制重置 BCM 12 和 BCM 13 的引脚模式。如果 BCM 12 已被其他外设（如 I2S 数据线）占用，此指令会导致其瘫痪。
 
-# 2. 安装所有必需的 Python 第三方依赖
-sudo apt install -y python3-rpi-lgpio python3-gpiozero python3-spidev python3-smbus2 python3-pil python3-numpy
+#### 3. 验证硬件 PWM 状态
+
+```bash
+ls -l /sys/class/pwm/        # 期望看到 pwmchip0
+pinctrl get 13               # 期望看到 a0 和 PWM 字样
 ```
 
-### 3. 运行 Demo
-赋予执行权限并使用系统自带的 `python3` 运行：
+#### 4. 软件层驱动
+
+通过 Linux 原生 `sysfs` 接口控制，避免 GPIO 库篡改引脚模式：
+
 ```bash
-chmod +x 3.5inch_Capacitive_Touch_LCD.py
-./3.5inch_Capacitive_Touch_LCD.py
+echo 1 > /sys/class/pwm/pwmchip0/export
+sudo chmod 666 /sys/class/pwm/pwmchip0/pwm1/period \
+               /sys/class/pwm/pwmchip0/pwm1/duty_cycle \
+               /sys/class/pwm/pwmchip0/pwm1/enable
+echo 0       > /sys/class/pwm/pwmchip0/pwm1/duty_cycle   # 先清零
+echo 1000000 > /sys/class/pwm/pwmchip0/pwm1/period       # 1000Hz
+echo 1       > /sys/class/pwm/pwmchip0/pwm1/enable
 ```
-
-## 🛠️ 为适配 RPi 4B/Bookworm 所做的核心修改
-
-为了让微雪官方的 Demo 能够在最新的树莓派环境下稳定运行，我们在本项目中对原架构进行了以下关键性修改：
-1. **触控中断 (TP_INT) 改造为纯轮询模式**: 官方设计中，触控芯片 FT6336U 会通过 `TP_INT` 引脚发送硬件中断。为了避免与其它音频/硬件中断冲突并节省 GPIO 资源，我们**彻底悬空了 `TP_INT` 引脚**。在 Python 代码中，改用**纯轮询模式 (Polling)**（不断调用 `touch.get_touch_xy()` 结合较短的 `time.sleep(0.02)`）来获取触控坐标。
-2. **解决底层 GPIO 库冲突**: 将依赖中的 `RPi.GPIO` 替换为新系统官方推荐的兼容包 **`rpi-lgpio`**。这完美解决了由于内核升级导致的 `Conflicts: python3-rpi.gpio` 报错问题。得益于其 API 完全兼容，代码中依旧保留 `import RPi.GPIO` 即可无缝运行。
-3. **Python 环境的 Shebang 规范化**: 将主程序首行的 `#!/usr/bin/python` 修改为了跨平台兼容性更好的 `#!/usr/bin/env python3`，确保系统能自动用正确的 Python3 解释器启动脚本。
 
 ---
 
-## 🚀 自动化部署流程 (Ansible)
+---
+
+## 🚀 安装与部署 (Installation & Deployment)
+
+### 🚀 自动化部署流程 (Ansible)
 
 本项目的所有底层依赖、服务注册、以及复杂的 `dtoverlay` (硬 I2C 开启、SPI 提速等) 均由 Ansible 一键接管。
 
-### 🎭 Ansible Role 分工 (Role Responsibilities)
+#### 🎭 Ansible Role 分工 (Role Responsibilities)
 基于松耦合和职责分明的原则，本项目的 Ansible Roles 进行了严格的功能解耦：
 * **`system`**: **(核心基座)** 负责所有系统级别的全局设置与底层硬件隔离。管理系统包更新、环境配置，并**集中管理所有底层硬件接口**（包括开启 I2C、SPI，挂载音频板和触摸屏的 dtoverlay）。所有硬件级重启（Reboot）均由此角色统筹判断。
 * **`touchscreen`**: 负责基于 Python 的微雪 SPI 屏幕驱动及界面的应用级部署。由于底层硬件总线已在 `system` 中开启配置，该角色纯粹专注于源码传输以及注册运行 Systemd UI 服务。
 * **`bluetooth` / `airplay` / `squeezelite`**: 各自独立负责对应的音频流接收服务的软件层安装、配置和 Systemd 守护进程管理。
 * **`pipewire` / `volume`**: 负责底层的核心音频路由引擎搭建以及多路音量的混音控制逻辑。
 
-### 1. 前置要求
-* 目标树莓派已安装 **Raspberry Pi OS Bookworm (64-bit) Lite** 无头版本。
+#### 1. 前置要求
+* 目标树莓派已安装 **Raspberry Pi OS Trixie (64-bit) Lite** 无头版本。
 * 你的本地控制端电脑（Mac/Linux）已安装 `ansible`。
 * **树莓派已接入网络，且配置了 SSH 免密登录**。具体配置步骤如下：
   1. 测试使用密码 SSH 登录到树莓派：
@@ -167,7 +178,7 @@ chmod +x 3.5inch_Capacitive_Touch_LCD.py
      ```
   4. 再次执行 `ssh <你的用户名>@<你的树莓派IP>`，确认能够免密直接登录。
 
-### 2. 快速开始
+#### 2. 快速开始
 在你的**本地电脑**终端执行：
 
 ```bash
@@ -186,22 +197,7 @@ ansible-playbook -i hosts.ini site.yml
 
 ---
 
-## 🛠 开发与调试
-
-如果需要调整屏幕 UI 布局、字体大小或触控的"隐形热区"碰撞边界，只需修改 `scripts/` 目录下的 Python 核心文件，无需重新跑整个 Playbook。
-
-你可以通过以下命令在树莓派上实时查看 UI 与触控服务的日志：
-```bash
-sudo journalctl -u touch_gui.service -f
-```
-
-## 🤝 贡献与许可
-* **许可证**： MIT License - 欢迎自由改造、分发。
-* Made with ❤️ for the Maker Community.
-
----
-
-## 关于禁用系统自动更新的说明
+### 关于禁用系统自动更新的说明
 
 在部署过程中，Ansible 剧本会自动卸载 `unattended-upgrades` 包以禁用操作系统的自动更新，原因如下：
 
@@ -211,13 +207,13 @@ sudo journalctl -u touch_gui.service -f
 
 ---
 
-## 📦 Python 依赖管理策略：混合优雅模式 (Hybrid Elegance)
+### 📦 Python 依赖管理策略：混合优雅模式 (Hybrid Elegance)
 
-本项目运行在现代化的树莓派系统环境（如 Debian 12 Bookworm/Trixie, Linux Kernel 6.12+）上。该环境默认启用了 **PEP 668 (EXTERNALLY-MANAGED)** 保护机制，防止全局 `pip` 安装破坏系统级依赖。
+本项目运行在现代化的树莓派系统环境（如 Debian 13 Trixie, Linux Kernel 6.12+）上。该环境默认启用了 **PEP 668 (EXTERNALLY-MANAGED)** 保护机制，防止全局 `pip` 安装破坏系统级依赖。
 
 为了兼顾 **部署稳定性、安装速度** 以及 **底层硬件的完美兼容**，本项目采用了 **APT + PIP 虚拟环境 (System-Site-Packages)** 相结合的"混合优雅"管理范式。
 
-### ⚙️ 为什么这样设计？
+#### ⚙️ 为什么这样设计？
 
 #### 1. 底层硬件与 C 扩展库使用 `apt` 管理
 针对涉及底层硬件通信（如 SPI、I2C、GPIO）和包含 C 语言扩展的库（例如 `spidev`, `rpi-lgpio`），我们直接通过系统的 `apt` 包管理器进行安装。
@@ -234,7 +230,7 @@ sudo journalctl -u touch_gui.service -f
 * **📦 获取最新特性**：突破 `apt` 仓库版本滞后的限制，自由锁定所需版本。
 * **✅ 遵循 PEP 668 规范**：将业务逻辑依赖隔离在虚拟环境中，绝不污染系统全局 Python 环境。
 
-### 🛠️ Ansible 部署实现
+#### 🛠️ Ansible 部署实现
 
 在我们的 Ansible 剧本中，通过开启虚拟环境的**包继承功能**（`--system-site-packages`）完美融合了这两者的优势。
 
@@ -246,11 +242,104 @@ sudo journalctl -u touch_gui.service -f
 
 ---
 
-## ⚡ 树莓派 SPI 屏幕驱动图像处理与传输优化总结
+### 📦 手动安装依赖与运行指南 (Manual Setup & Dependencies)
+
+如果你不使用 Ansible，需要在树莓派上直接运行 `3.5inch_Capacitive_Touch_LCD.py` Demo，请遵循以下环境配置步骤（特别针对基于 Debian 13 Trixie 的最新 Raspberry Pi OS）：
+
+#### 1. 开启 SPI 和 I2C 接口
+树莓派默认关闭这些硬件接口，会导致运行报错 `No such file or directory`。运行前必须开启：
+```bash
+sudo raspi-config
+# 选择 3 Interface Options -> I4 SPI -> Yes
+# 选择 3 Interface Options -> I5 I2C -> Yes
+sudo reboot
+```
+
+#### 2. 安装 Python 系统级依赖
+由于最新树莓派系统引入了 PEP 668 保护机制，禁止 `pip` 全局安装。同时，新系统内核弃用了旧的 sysfs GPIO 接口。因此我们必须使用 `apt` 安装，并**使用 `rpi-lgpio` 替代旧的 `RPi.GPIO`**：
+```bash
+# 1. 修复可能损坏的包状态（例如因为 32位 库导致的未满足依赖）
+sudo apt --fix-broken install -y
+
+# 2. 安装所有必需的 Python 第三方依赖
+sudo apt install -y python3-rpi-lgpio python3-gpiozero python3-spidev python3-smbus2 python3-pil python3-numpy
+```
+
+#### 3. 运行 Demo
+赋予执行权限并使用系统自带的 `python3` 运行：
+```bash
+chmod +x 3.5inch_Capacitive_Touch_LCD.py
+./3.5inch_Capacitive_Touch_LCD.py
+```
+
+#### 🛠️ 为适配 RPi 4B/Trixie 所做的核心修改
+
+为了让微雪官方的 Demo 能够在最新的树莓派环境下稳定运行，我们在本项目中对原架构进行了以下关键性修改：
+1. **触控中断 (TP_INT) 改造为纯轮询模式**: 官方设计中，触控芯片 FT6336U 会通过 `TP_INT` 引脚发送硬件中断。为了避免与其它音频/硬件中断冲突并节省 GPIO 资源，我们**彻底悬空了 `TP_INT` 引脚**。在 Python 代码中，改用**纯轮询模式 (Polling)**（不断调用 `touch.get_touch_xy()` 结合较短的 `time.sleep(0.02)`）来获取触控坐标。
+2. **解决底层 GPIO 库冲突**: 将依赖中的 `RPi.GPIO` 替换为新系统官方推荐的兼容包 **`rpi-lgpio`**。这完美解决了由于内核升级导致的 `Conflicts: python3-rpi.gpio` 报错问题。得益于其 API 完全兼容，代码中依旧保留 `import RPi.GPIO` 即可无缝运行。
+3. **Python 环境的 Shebang 规范化**: 将主程序首行的 `#!/usr/bin/python` 修改为了跨平台兼容性更好的 `#!/usr/bin/env python3`，确保系统能自动用正确的 Python3 解释器启动脚本。
+
+---
+
+---
+
+## 🧑‍💻 开发调试与架构决策 (Development & Architecture)
+
+### 🛠 开发与调试
+
+如果需要调整屏幕 UI 布局、字体大小或触控的"隐形热区"碰撞边界，只需修改 `scripts/` 目录下的 Python 核心文件，无需重新跑整个 Playbook。
+
+你可以通过以下命令在树莓派上实时查看 UI 与触控服务的日志：
+```bash
+sudo journalctl -u touch_gui.service -f
+```
+
+#### 📸 极客截屏指南
+
+由于 UI 直接由 Python 推送到 SPI 硬件，绕过了 X11/Wayland，无法使用常规截屏工具。我们内置了基于 Linux 信号机制的**内存级截屏**功能。
+
+```bash
+# 触发截屏
+systemctl --user kill -s SIGUSR1 touchscreen
+
+# 拉取到本地
+scp player@<你的树莓派IP>:/tmp/screenshot_*.png ./
+```
+
+---
+
+### 🏗️ 架构演进与性能极致优化
+
+#### 1. 突破物理极限的"脏区渲染" (Dirty Rectangle)
+
+SPI 总线在 24MHz 频率下全屏刷新的物理极限仅约 7 FPS。通过引入 `ImageChops.difference` 对比新旧两帧，计算最小变化区域后局部推送，数据传输量降低 90% 以上，实现 30+ FPS 流畅滚动。
+
+#### 2. 告别上帝对象：模块化大拆分
+
+将原本近 500 行的 `main.py` 拆分为三大核心管家：
+
+* 🛡️ **`state_manager.py`**：后台轮询所有数据源，对外提供干净的状态快照。
+* 🎛️ **`input_controller.py`**：接管所有坐标碰撞计算，将原始触摸事件翻译为语义化动作。
+* 🎨 **`ui_manager.py`**：渲染引擎与屏幕调度，管理所有子界面的流转和脏区渲染。
+
+#### 3. 彻底分离配置边界
+
+* **`ts.ini`**：系统行为参数（硬件 SPI 频率、亮度、屏保超时、滚动节奏）。
+* **`ui_config.toml`**：UI 视觉参数（颜色、坐标、字号、图标）。
+
+Python 渲染器成为纯粹的"数据刷子"，切换主题只需替换 `.toml` 文件。
+
+#### 4. 交互升华：零延迟进度条拖拽
+
+拖拽过程中以 30FPS 实时更新滑块视觉位置，手指抬起时才向播放器后端发送跳转指令，完美隔离网络延迟与拖拽手感。
+
+---
+
+#### ⚡ 树莓派 SPI 屏幕驱动图像处理与传输优化总结
 
 在通过 Python 驱动树莓派 SPI 屏幕（如 ST7796，分辨率 480x320）的过程中，原生实现的帧率通常极低（< 5 FPS），且 CPU 占用率极高。通过以下几个核心层面的优化，我们将单帧处理与传输延迟降低到了毫秒级，实现了 30+ FPS 的流畅显示。
 
-### 1. 核心优化：彻底消除 Python 列表转换开销
+#### 1. 核心优化：彻底消除 Python 列表转换开销
 
 **痛点**：原生的 `spidev.writebytes()` 方法强制要求传入一个 **Python List**。一帧 480x320 的 RGB565 图像包含 307,200 个字节。如果使用 `list(data)`，Python 必须在内存中动态创建 30 多万个 `PyLong` 整型对象。这个拆包和打包的过程极其缓慢，耗时远超 SPI 物理传输本身。
 
@@ -268,7 +357,7 @@ for i in range(0, len(data), 4096):
 ```
 *注：分块 4096 字节是为了适配 Linux 默认的 `spidev.bufsiz` 缓冲区大小限制。*
 
-### 2. 算法优化：Numpy 向量化位运算 (RGB888 转 RGB565)
+#### 2. 算法优化：Numpy 向量化位运算 (RGB888 转 RGB565)
 
 ```python
 img = np.asarray(Image)
@@ -277,7 +366,7 @@ pix[..., [0]] = np.add(np.bitwise_and(img[..., [0]], 0xF8), np.right_shift(img[.
 pix[..., [1]] = np.add(np.bitwise_and(np.left_shift(img[..., [1]], 3), 0xE0), np.right_shift(img[..., [2]], 3))
 ```
 
-### 3. 内存优化：对象复用与降低 GC 压力
+#### 3. 内存优化：对象复用与降低 GC 压力
 
 ```python
 img = Image.new("RGB", (w, h), "BLACK")
@@ -289,102 +378,30 @@ while True:
     dev.show_image(img)
 ```
 
-### 4. 架构优化：剥离高频轮询线程
+#### 4. 架构优化：剥离高频轮询线程
 
 将触摸 I2C 事件的抓取剥离到独立后台守护线程（50Hz），通过线程锁共享数据给主绘图循环，确保触摸事件不因渲染延迟而丢失。
 
 ---
 
-## 🌟 树莓派屏幕背光闪烁彻底解决与硬件 PWM 配置指南
+#### 🎞️ 图像撕裂问题与滚动优化 (Screen Tearing & Scrolling Optimization)
 
-### 1. 为什么背光会闪烁？
+#### 遇到的问题 (Problem)
+在实现界面滚动动画时，我们遇到了明显的**画面撕裂 (Screen Tearing)** 现象。产生这一问题的根本原因在于，树莓派通过 SPI 总线向屏幕推送图像数据的刷新周期，与屏幕本身的硬件级刷新时钟不同步（此类 SPI 屏幕通常没有 VSYNC 垂直同步信号或未连接 TE 引脚）。当画面进行大面积平移滚动时，SPI 数据正在连续覆盖显存的过程中，屏幕同步进行了硬件扫线刷新，导致新旧两帧画面的交替在视觉上产生了明显的横向断层。
 
-软件 PWM 依赖 CPU 线程调度模拟方波，在系统负载突增时会发生毫秒级调度延迟，在低占空比下（< 5%）导致整个高电平脉冲被"吞掉"，产生明显闪烁。
+#### 解决方法与最终方案 (Solution)
+由于硬件层面上无法从 SPI 总线获取 VSYNC 信号，且大面积滚动时“脏区更新”覆盖了整个屏幕而无法减少传输耗时，我们最终采取了从**视觉感知（Visual Perception）**层面来掩盖物理缺陷的策略：
 
-**终极解决方案**：启用树莓派原生的**硬件定时器芯片 (Hardware PWM)** 接管背光引脚。
+* **极致压缩单帧时间**：将动画的单次滚动循环时间（帧停留间隔）直接减少到了 **20ms**（等效于 50 FPS 的刷新率）。
+* **利用视觉暂留 (Persistence of Vision)**：在 20ms 的极高帧率下，每一次滚动的像素位移步长变得极小，且画面切换的速度极快。虽然受限于 SPI 的物理传输机制，微观层面的撕裂在仪器下依然发生，但在人眼视觉暂留效应的平滑下，这种高频微小的撕裂被彻底掩盖。**最终在视觉上已经完全看不出任何撕裂感**，成功实现了极度丝滑流畅的滚动交互体验。
 
-### 2. 如何开启硬件 PWM (以 BCM 13 引脚为例)
+#### 🏛️ UI 架构决策记录 (Architecture Decision Record)
 
-编辑 `/boot/firmware/config.txt`：
-
-```ini
-# Enable PWM for Backlight Control on BCM 13
-dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4
-```
-
-> **⚠️ BCM 12 与 BCM 13 双通道绑定**：`pwm-2chan` 会同时强制重置 BCM 12 和 BCM 13 的引脚模式。如果 BCM 12 已被其他外设（如 I2S 数据线）占用，此指令会导致其瘫痪。
-
-### 3. 验证硬件 PWM 状态
-
-```bash
-ls -l /sys/class/pwm/        # 期望看到 pwmchip0
-pinctrl get 13               # 期望看到 a0 和 PWM 字样
-```
-
-### 4. 软件层驱动
-
-通过 Linux 原生 `sysfs` 接口控制，避免 GPIO 库篡改引脚模式：
-
-```bash
-echo 1 > /sys/class/pwm/pwmchip0/export
-sudo chmod 666 /sys/class/pwm/pwmchip0/pwm1/period \
-               /sys/class/pwm/pwmchip0/pwm1/duty_cycle \
-               /sys/class/pwm/pwmchip0/pwm1/enable
-echo 0       > /sys/class/pwm/pwmchip0/pwm1/duty_cycle   # 先清零
-echo 1000000 > /sys/class/pwm/pwmchip0/pwm1/period       # 1000Hz
-echo 1       > /sys/class/pwm/pwmchip0/pwm1/enable
-```
-
----
-
-## 📸 极客截屏指南
-
-由于 UI 直接由 Python 推送到 SPI 硬件，绕过了 X11/Wayland，无法使用常规截屏工具。我们内置了基于 Linux 信号机制的**内存级截屏**功能。
-
-```bash
-# 触发截屏
-systemctl --user kill -s SIGUSR1 touchscreen
-
-# 拉取到本地
-scp player@<你的树莓派IP>:/tmp/screenshot_*.png ./
-```
-
----
-
-## 🏗️ 架构演进与性能极致优化
-
-### 1. 突破物理极限的"脏区渲染" (Dirty Rectangle)
-
-SPI 总线在 24MHz 频率下全屏刷新的物理极限仅约 7 FPS。通过引入 `ImageChops.difference` 对比新旧两帧，计算最小变化区域后局部推送，数据传输量降低 90% 以上，实现 30+ FPS 流畅滚动。
-
-### 2. 告别上帝对象：模块化大拆分
-
-将原本近 500 行的 `main.py` 拆分为三大核心管家：
-
-* 🛡️ **`state_manager.py`**：后台轮询所有数据源，对外提供干净的状态快照。
-* 🎛️ **`input_controller.py`**：接管所有坐标碰撞计算，将原始触摸事件翻译为语义化动作。
-* 🎨 **`ui_manager.py`**：渲染引擎与屏幕调度，管理所有子界面的流转和脏区渲染。
-
-### 3. 彻底分离配置边界
-
-* **`ts.ini`**：系统行为参数（硬件 SPI 频率、亮度、屏保超时、滚动节奏）。
-* **`ui_config.toml`**：UI 视觉参数（颜色、坐标、字号、图标）。
-
-Python 渲染器成为纯粹的"数据刷子"，切换主题只需替换 `.toml` 文件。
-
-### 4. 交互升华：零延迟进度条拖拽
-
-拖拽过程中以 30FPS 实时更新滑块视觉位置，手指抬起时才向播放器后端发送跳转指令，完美隔离网络延迟与拖拽手感。
-
----
-
-## 🏛️ UI 架构决策记录 (Architecture Decision Record)
-
-### 背景
+#### 背景
 
 项目在功能迭代过程中，`ui_manager.py` 逐渐积累了多个布尔状态变量（`show_info_screen`、`show_mask_screen`、`show_photo_screen`、`show_volume_popup`）来控制浮层互斥逻辑，同时存在 `dragging_progress` + `drag_progress_ratio` 两个相互冗余的进度条拖拽状态。
 
-### 决策：精准重构，拒绝过度设计
+#### 决策：精准重构，拒绝过度设计
 
 经过评估，我们**明确拒绝了引入 UI 状态栈（State Stack Pattern）**的重构方案，理由如下：
 
@@ -393,7 +410,7 @@ Python 渲染器成为纯粹的"数据刷子"，切换主题只需替换 `.toml`
 * 单人维护项目，`push/pop` 范式会增加调试成本，违背"简洁可维护"原则。
 * 现有性能已经足够（脏区渲染 + 30Hz 主循环），不需要事件驱动重构。
 
-### 实际执行的三项精准改动
+#### 实际执行的三项精准改动
 
 #### 1. 浮层状态改为枚举互斥变量
 
@@ -440,13 +457,12 @@ should_render = (current_second != self._last_saver_second)
 
 ---
 
-## 🎞️ 图像撕裂问题与滚动优化 (Screen Tearing & Scrolling Optimization)
+---
 
-### 遇到的问题 (Problem)
-在实现界面滚动动画时，我们遇到了明显的**画面撕裂 (Screen Tearing)** 现象。产生这一问题的根本原因在于，树莓派通过 SPI 总线向屏幕推送图像数据的刷新周期，与屏幕本身的硬件级刷新时钟不同步（此类 SPI 屏幕通常没有 VSYNC 垂直同步信号或未连接 TE 引脚）。当画面进行大面积平移滚动时，SPI 数据正在连续覆盖显存的过程中，屏幕同步进行了硬件扫线刷新，导致新旧两帧画面的交替在视觉上产生了明显的横向断层。
+## 🤝 贡献与许可
 
-### 解决方法与最终方案 (Solution)
-由于硬件层面上无法从 SPI 总线获取 VSYNC 信号，且大面积滚动时“脏区更新”覆盖了整个屏幕而无法减少传输耗时，我们最终采取了从**视觉感知（Visual Perception）**层面来掩盖物理缺陷的策略：
+* **许可证**： MIT License - 欢迎自由改造、分发。
+* Made with ❤️ for the Maker Community.
 
-* **极致压缩单帧时间**：将动画的单次滚动循环时间（帧停留间隔）直接减少到了 **20ms**（等效于 50 FPS 的刷新率）。
-* **利用视觉暂留 (Persistence of Vision)**：在 20ms 的极高帧率下，每一次滚动的像素位移步长变得极小，且画面切换的速度极快。虽然受限于 SPI 的物理传输机制，微观层面的撕裂在仪器下依然发生，但在人眼视觉暂留效应的平滑下，这种高频微小的撕裂被彻底掩盖。**最终在视觉上已经完全看不出任何撕裂感**，成功实现了极度丝滑流畅的滚动交互体验。
+---
+
