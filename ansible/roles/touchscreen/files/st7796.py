@@ -64,7 +64,7 @@ class SmartBacklight:
         else:
             self.sw_pwm.value = self._value
 
-SPI_Freq = 32000000     # SPI 时钟频率 (降频至20MHz以提高物理线材连接时的稳定性)
+SPI_Freq = 24000000     # SPI 时钟频率 (降频至20MHz以提高物理线材连接时的稳定性)
 SPI_Mode = 0            # 模式0
 RST_PIN  = 27
 DC_PIN   = 25
