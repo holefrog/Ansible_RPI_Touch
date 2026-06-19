@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw
 dev = st7796()
 
 # 临时把 SPI 频率降至 40MHz 进行测试
-dev.SPI.max_speed_hz = 32000000
+dev.SPI.max_speed_hz = 40000000
 
 def push_fast(dev, img):
     arr = np.asarray(img)

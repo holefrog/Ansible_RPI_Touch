@@ -6,7 +6,7 @@ ts_width: 480
 ts_height: 320
 ts_spi_bus: 0
 ts_spi_device: 0
-ts_spi_speed_hz: 24000000
+ts_spi_speed_hz: 32000000 #用杜邦线，通常建议把 SPI 频率降到 24MHz ~ 32MHz 之间来保证稳定性。
 ts_dc_pin: 25
 ts_rst_pin: 27
 ts_bl_pin: 13
