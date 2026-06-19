@@ -5,7 +5,8 @@
 screen_width = 480
 screen_height = 320
 theme_color = "#1DB954"            # 主题色（如进度条高亮）
-font_main = "./resources/SmileySans-Oblique.ttf" # 得意黑字体
+
+font_main = "./resources/ResourceHanRoundedCN-Medium.ttf" # 字体
 font_clock = "./resources/bazaronite.ttf" # 时钟专用独立字体
 font_icon = "./resources/MaterialIcons-Regular.ttf" # 主图标库 (MDI)
 
