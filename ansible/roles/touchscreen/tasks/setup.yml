@@ -1,0 +1,52 @@
+---
+- name: Install system dependencies for Touchscreen
+  become: yes
+  ansible.builtin.apt:
+    name:
+      - python3
+      - python3-pip
+      - python3-venv
+      - python3-smbus
+      - python3-pillow
+      - python3-rpi-lgpio
+      - python3-spidev
+      - python3-numpy
+    state: present
+    update_cache: yes
+
+- name: Check if I2C device exists
+  ansible.builtin.stat:
+    path: "/dev/i2c-{{ ts_i2c_bus }}"
+  register: i2c_dev
+
+- name: Warn if I2C device does not exist
+  ansible.builtin.debug:
+    msg: "WARNING: I2C device /dev/i2c-{{ ts_i2c_bus }} does not exist. Tests will be skipped, and service may fail."
+  when: not i2c_dev.stat.exists
+
+- name: Ensure Python virtual environment exists and dependencies are installed
+  ansible.builtin.pip:
+    name:
+      - pip
+      - requests
+      - gpiozero
+      - rpi-lgpio
+    virtualenv: "{{ ts_venv_dir }}"
+    virtualenv_command: "python3 -m venv"
+    virtualenv_site_packages: yes
+    state: present
+  become: no
+
+- name: Enforce system site-packages access in virtual environment
+  ansible.builtin.lineinfile:
+    path: "{{ ts_venv_dir }}/pyvenv.cfg"
+    regexp: '^include-system-site-packages\s*='
+    line: 'include-system-site-packages = true'
+  become: no
+
+- name: Force TERM to xterm-256color in bashrc for terminal compatibility (top, htop)
+  ansible.builtin.lineinfile:
+    path: "~/.bashrc"
+    regexp: '^export TERM='
+    line: 'export TERM=xterm-256color'
+  become: no

@@ -1,0 +1,39 @@
+---
+# tasks file for pipewire
+
+- name: Install PipeWire and WirePlumber packages
+  become: yes
+  ansible.builtin.apt:
+    name:
+      - pipewire
+      - wireplumber
+      - pipewire-pulse
+      - pipewire-alsa
+      - pipewire-audio
+      - libspa-0.2-bluetooth
+    state: present
+
+- name: Hold PipeWire and WirePlumber packages to prevent automatic updates
+  become: yes
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - pipewire
+    - wireplumber
+    - pipewire-pulse
+    - pipewire-alsa
+    - pipewire-audio
+    - libspa-0.2-bluetooth
+
+- name: Enable and start PipeWire user services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+    scope: user
+  loop:
+    - pipewire.service
+    - wireplumber.service
+    - pipewire-pulse.service
+  become: no

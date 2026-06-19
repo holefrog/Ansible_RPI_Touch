@@ -1,0 +1,33 @@
+---
+- name: Create Touchscreen app directory
+  ansible.builtin.file:
+    path: "{{ ts_app_dir }}"
+    state: directory
+    mode: '0755'
+  become: no
+
+- name: Copy Touchscreen application files (Python & Fonts)
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ ts_app_dir }}/"
+    mode: '0644'
+  with_fileglob:
+    - "*.py"
+    - "*.toml"
+  become: no
+
+- name: Copy resource files (Fonts etc.)
+  ansible.builtin.copy:
+    src: resources/
+    dest: "{{ ts_app_dir }}/resources/"
+    mode: '0644'
+    directory_mode: '0755'
+  become: no
+
+- name: Generate ts.ini configuration
+  ansible.builtin.template:
+    src: ts.ini.j2
+    dest: "{{ ts_app_dir }}/ts.ini"
+    mode: '0644'
+  become: no
+  notify: restart touchscreen service

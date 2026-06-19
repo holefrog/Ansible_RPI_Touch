@@ -1,0 +1,21 @@
+---
+- name: Enable SPI, Touch screen overlays and PWM for backlight control
+  become: yes
+  ansible.builtin.blockinfile:
+    path: "{{ boot_config_file }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK: SPI and Touch"
+    block: |
+      # Enable base buses
+      dtparam=spi=on
+      
+      # Using User Space SPI driver as per Waveshare Demo
+      # Screen kernel DRM/FB drivers are omitted so /dev/spidev0.0 is available
+      
+      # Enable Hardware {{ ts_i2c_overlay | upper }} for Touch Screen on BCM {{ ts_i2c_sda_pin }} and {{ ts_i2c_scl_pin }}
+      dtoverlay={{ ts_i2c_overlay }}
+
+      # Enable PWM for Backlight Control on BCM 13
+      dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4
+
+    state: present
+  register: touchscreen_boot_config

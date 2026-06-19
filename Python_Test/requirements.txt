@@ -1,0 +1,9 @@
+# Touch Screen & Display Drivers
+rpi-lgpio
+gpiozero
+spidev
+smbus2
+
+# Image Processing & Array Manipulation
+Pillow
+numpy

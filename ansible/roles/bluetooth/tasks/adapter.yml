@@ -1,0 +1,30 @@
+---
+- name: Ensure systemd drop-in directory for bluetooth exists
+  become: yes
+  ansible.builtin.file:
+    path: /etc/systemd/system/bluetooth.service.d
+    state: directory
+    mode: '0755'
+
+- name: Disable SAP plugin in bluetoothd to prevent phone icon
+  become: yes
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/bluetooth.service.d/override.conf
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=/usr/libexec/bluetooth/bluetoothd --noplugin=sap,bap
+    mode: '0644'
+
+- name: Flush handlers to restart PipeWire and BlueZ immediately
+  ansible.builtin.meta: flush_handlers
+
+- name: Force Bluetooth system alias (Override BlueZ cache)
+  become: yes
+  ansible.builtin.command: bluetoothctl system-alias "{{ BT_NAME }}"
+  changed_when: true
+
+- name: Ensure Bluetooth is discoverable
+  become: yes
+  ansible.builtin.command: bluetoothctl discoverable on
+  changed_when: false

@@ -1,0 +1,7 @@
+---
+
+- name: Disable OS automatic updates (unattended-upgrades) for system stability
+  ansible.builtin.apt:
+    name: unattended-upgrades
+    state: absent
+  become: yes

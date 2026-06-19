@@ -1,0 +1,16 @@
+---
+- name: Generate Touchscreen hardware test script
+  ansible.builtin.template:
+    src: ts_test.py.j2
+    dest: "{{ ts_app_dir }}/ts_test.py"
+    mode: '0755'
+  become: no
+
+- name: Run Touchscreen hardware test
+  ansible.builtin.command: "{{ ts_venv_dir }}/bin/python {{ ts_app_dir }}/ts_test.py"
+  args:
+    chdir: "{{ ts_app_dir }}"
+  become: no
+  async: "{{ ts_test_timeout }}"
+  poll: 2
+  when: i2c_dev.stat.exists

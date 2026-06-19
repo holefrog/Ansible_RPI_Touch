@@ -1,0 +1,31 @@
+---
+# defaults file for touchscreen
+
+# Touchscreen hardware configuration (ST7796 Display)
+ts_width: 480
+ts_height: 320
+ts_spi_bus: 0
+ts_spi_device: 0
+ts_spi_speed_hz: 24000000
+ts_dc_pin: 25
+ts_rst_pin: 27
+ts_bl_pin: 13
+
+# Touchscreen hardware configuration (FT6336U Touch)
+ts_i2c_bus: 3
+ts_i2c_address: "0x38"
+ts_tp_rst_pin: 17
+
+ts_log_level: "INFO"
+
+# Default paths
+ts_app_base_dir: "{{ mediaplayer_home }}/rpi-mediaplayer"
+ts_app_dir: "{{ ts_app_base_dir }}/ts"
+ts_venv_dir: "{{ mediaplayer_home }}/.venv/ts"
+metadata_pipe: "/tmp/shairport-sync-metadata"
+
+# Hardware test
+ts_test_timeout: 25
+
+# User runtime path for systemd service template
+user_runtime_dir: "{{ mediaplayer_runtime_dir }}"

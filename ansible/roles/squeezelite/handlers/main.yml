@@ -1,0 +1,15 @@
+---
+# handlers file for squeezelite
+
+- name: reload systemd user daemon
+  ansible.builtin.systemd:
+    daemon_reload: yes
+    scope: user
+  become: no
+
+- name: restart squeezelite service
+  ansible.builtin.systemd:
+    name: squeezelite.service
+    state: restarted
+    scope: user
+  become: no

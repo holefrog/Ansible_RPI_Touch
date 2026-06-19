@@ -1,0 +1,26 @@
+---
+# handlers file for bluetooth
+
+- name: restart bluetooth service
+  become: yes
+  ansible.builtin.systemd:
+    name: bluetooth.service
+    state: restarted
+
+- name: restart user pipewire services
+  ansible.builtin.systemd:
+    name: wireplumber.service
+    state: restarted
+    scope: user
+  become: no
+
+- name: reload systemd daemon
+  become: yes
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: restart autopair service
+  become: yes
+  ansible.builtin.systemd:
+    name: bluetooth-a2dp-autopair.service
+    state: restarted

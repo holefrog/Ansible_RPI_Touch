@@ -1,0 +1,5 @@
+---
+DEFAULT_HW_VOLUME: "95"
+DEFAULT_SINK_VOLUME: "100"
+SYSTEM_BIN_DIR: "/usr/local/bin"
+USER_RUNTIME_DIR: "{{ mediaplayer_runtime_dir }}"

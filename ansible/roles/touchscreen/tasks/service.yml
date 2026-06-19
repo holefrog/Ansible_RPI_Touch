@@ -1,0 +1,25 @@
+---
+- name: Ensure user systemd directory exists
+  ansible.builtin.file:
+    path: "{{ mediaplayer_home }}/.config/systemd/user"
+    state: directory
+    mode: '0755'
+  become: no
+
+- name: Generate systemd user service for Touchscreen
+  ansible.builtin.template:
+    src: ts.service.j2
+    dest: "{{ mediaplayer_home }}/.config/systemd/user/touchscreen.service"
+    mode: '0644'
+  become: no
+  notify: 
+    - reload systemd user daemon
+    - restart touchscreen service
+
+- name: Enable and start Touchscreen user service
+  ansible.builtin.systemd:
+    name: touchscreen.service
+    state: started
+    enabled: yes
+    scope: user
+  become: no

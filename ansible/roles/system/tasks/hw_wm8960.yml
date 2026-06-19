@@ -1,0 +1,13 @@
+---
+- name: Configure WM8960 audio driver in boot config
+  become: yes
+  ansible.builtin.lineinfile:
+    path: "{{ boot_config_file }}"
+    line: "{{ item }}"
+    state: present
+  loop:
+    - "dtparam=i2s=on"
+    - "dtparam=audio=off"
+    - "dtoverlay=wm8960-soundcard"
+    - "dtoverlay=i2s-mmap"
+  register: wm8960_boot_config

@@ -1,0 +1,46 @@
+# ============================================
+# Touchscreen 显示服务完整配置文件
+# ============================================
+[SERVER]
+HOST_IP = {{ lms_server_ip }}
+HOST_Port = {{ lms_server_port }}
+PLAYER_ID = {{ player_mac }}
+
+[TS]
+# 显示与触摸 尺寸
+width = {{ ts_width }}
+height = {{ ts_height }}
+
+# SPI 屏幕配置 (ST7796)
+spi_bus = {{ ts_spi_bus }}
+spi_device = {{ ts_spi_device }}
+spi_speed_hz = {{ ts_spi_speed_hz }}
+dc_pin = {{ ts_dc_pin }}
+rst_pin = {{ ts_rst_pin }}
+bl_pin = {{ ts_bl_pin }}
+
+# I2C 触摸配置 (FT6336U)
+i2c_bus = {{ ts_i2c_bus }}
+i2c_address = {{ ts_i2c_address }}
+tp_rst_pin = {{ ts_tp_rst_pin }}
+
+# 🆕 日志级别 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+log_level = {{ ts_log_level }}
+
+[DISPLAY]
+# 亮度配置 (0-255)
+default_brightness = 255
+dim_brightness = 8
+media_dim_brightness = 32
+marquee_speed = 20
+
+[SCREENSAVER]
+media_dim_timeout = 120
+idle_dim_timeout = 60
+off_timeout = 900
+
+[POPUP]
+popup_duration = 3
+
+[AIRPLAY]
+metadata_pipe = {{ metadata_pipe }}

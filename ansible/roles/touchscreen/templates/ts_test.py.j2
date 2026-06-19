@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+import time
+import threading
+from st7796 import st7796
+from ft6336u import ft6336u
+from PIL import Image, ImageDraw, ImageFont
+
+
+# 初始化 SPI 屏幕
+dev = st7796(
+    spi_bus={{ ts_spi_bus }},
+    spi_device={{ ts_spi_device }},
+    spi_freq={{ ts_spi_speed_hz }},
+    rst_pin={{ ts_rst_pin }},
+    dc_pin={{ ts_dc_pin }},
+    bl_pin={{ ts_bl_pin }}
+)
+
+w = {{ ts_width }}
+h = {{ ts_height }}
+
+# 初始化触摸
+touch = ft6336u()
+
+TOUCH_HOLD_TIME = 0.2  # 触摸状态在手指离开后保留显示的时间 (秒)
+
+# ==========================================
+# 启动独立高频触摸轮询线程
+# ==========================================
+touch_event = None
+touch_lock = threading.Lock()
+
+def touch_poller():
+    global touch_event
+    while True:
+        points, coords = touch.get_touch_xy()
+        if points > 0:
+            with touch_lock:
+                touch_event = (coords[0]['x'], coords[0]['y'])
+        time.sleep(0.02)  # 50Hz 独立轮询，绝不漏掉任何瞬时点击
+
+threading.Thread(target=touch_poller, daemon=True).start()
+
+# 字体
+try:
+    # 加载系统自带的无衬线字体，字号设置为 36
+    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
+    font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
+except Exception:
+    font = ImageFont.load_default()
+    font_small = font
+
+start_time = time.time()
+last_touch_time = 0
+last_disp_x, last_disp_y = 0, 0
+last_raw_x, last_raw_y = 0, 0
+last_redraw_time = 0
+
+fps = 0.0
+spi_time_ms = 0.0
+frame_count = 0
+last_fps_calc_time = start_time
+
+# 提前分配 Image 和 Draw 对象，避免在循环中重复申请内存
+img = Image.new("RGB", (w, h), "BLACK")
+draw = ImageDraw.Draw(img)
+
+while True:
+    current_time = time.time()
+    
+    draw.rectangle((0, 0, w, h), fill="black")  # 使用矩形覆盖清空上一帧，实现对象复用
+    
+    draw.text((0, 0), "Hello Touchscreen!", font=font, fill="white")
+    draw.text((0, 40), "Will quit in 10s", font=font, fill="white")
+    draw.text((0, 80), time.strftime("%H:%M:%S"), font=font, fill="white")
+    draw.text((0, 200), f"SPI Time: {spi_time_ms:.1f} ms  |  FPS: {fps:.1f}", font=font_small, fill="cyan")
+    
+    # 获取后台线程抓取到的最新触摸事件
+    evt = None
+    with touch_lock:
+        evt = touch_event
+        touch_event = None
+        
+    if evt:
+        # 只要接收到触摸事件，就全速更新坐标和最后触摸时间
+        last_touch_time = current_time
+        raw_x, raw_y = evt
+        
+        # ==========================================
+        # 物理边距校准映射 (Linear Calibration)
+        # ==========================================
+        RAW_X_TOP, RAW_X_BOTTOM = 286, 46
+        RAW_Y_LEFT, RAW_Y_RIGHT = 452, 30
+        
+        raw_x_c = max(RAW_X_BOTTOM, min(RAW_X_TOP, raw_x))
+        raw_y_c = max(RAW_Y_RIGHT, min(RAW_Y_LEFT, raw_y))
+        
+        last_disp_x = int((RAW_Y_LEFT - raw_y_c) / (RAW_Y_LEFT - RAW_Y_RIGHT) * w)
+        last_disp_y = int((RAW_X_TOP - raw_x_c) / (RAW_X_TOP - RAW_X_BOTTOM) * h)
+        last_raw_x = raw_x
+        last_raw_y = raw_y
+
+    if current_time - last_touch_time < TOUCH_HOLD_TIME:
+        draw.text((0, 120), f"XY: {last_disp_x}, {last_disp_y}", font=font, fill="green")
+        draw.text((0, 160), f"Raw: {last_raw_x}, {last_raw_y}", font=font, fill="orange")
+    else:
+        draw.text((0, 120), "No touch detected", font=font, fill="red")
+        
+    # 提高刷屏帧率限制，配合底层的 Numpy + writebytes2 极速转换
+    if current_time - last_redraw_time > 0.033: # 限制最高约 ~30 FPS
+        t_start = time.time()
+        dev.show_image(img)
+        t_end = time.time()
+        
+        spi_time_ms = (t_end - t_start) * 1000
+        frame_count += 1
+        if t_end - last_fps_calc_time >= 1.0:
+            fps = frame_count / (t_end - last_fps_calc_time)
+            frame_count = 0
+            last_fps_calc_time = t_end
+            
+        last_redraw_time = current_time
+    
+    # 10 秒后退出 (加快 Ansible 部署速度)
+    if current_time - start_time >= 10:
+        break
+
+    time.sleep(0.01)  # 由于触摸已经剥离到后台，主循环可以尽量全速跑
+
+dev.clear()
+time.sleep(0.1)  # 给予内核 SPI 缓冲区足够的时间把清屏指令发送完毕
+
+# 退出时物理切断 PWM 背光，防止硬件引脚保持常亮状态
+if hasattr(dev, 'GPIO_BL_PIN'):
+    dev.GPIO_BL_PIN.value = 0.0
+
+print("Touchscreen test finished.")

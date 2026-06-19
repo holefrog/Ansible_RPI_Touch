@@ -1,0 +1,305 @@
+# ==========================================
+# 0. 全局基础配置
+# ==========================================
+[global]
+screen_width = 480
+screen_height = 320
+theme_color = "#1DB954"            # 主题色（如进度条高亮）
+font_main = "./resources/SmileySans-Oblique.ttf" # 得意黑字体
+font_clock = "./resources/bazaronite.ttf" # 时钟专用独立字体
+font_icon = "./resources/MaterialIcons-Regular.ttf" # 主图标库 (MDI)
+
+# ==========================================
+# 1. 共享状态栏 (Status Bar)
+# ==========================================
+[screens.status_top]
+height = 60
+
+    [screens.status_top.wifi]
+    pos = [20, 26]
+    font_size = 14
+    color = "#B3B3B3"              # 优雅的中性浅灰
+    icon_connected = "\ue63e"      # mi-wifi
+    icon_disconnected = "\ue648"   # mi-wifi-off
+
+    [screens.status_top.volume]
+    pos = [85, 26]
+    font_size = 14
+    color = "#B3B3B3"
+    icon = "\ue050"                # mi-volume-up
+
+    [screens.status_top.info_icon]
+    pos = [150, 26]
+    font_size = 14
+    color = "#B3B3B3"
+    icon = "\ue88e"                # mi-info
+
+    # 居中时间
+    [screens.status_top.time]
+    pos = [0, 15]
+    font_size = 24                 # 稍微缩小避免喧宾夺主
+    color = "#FFFFFF"              # 纯白，保证清晰可见
+
+    # 右上角 相册入口图标 (FontAwesome: fa-image)
+    [screens.status_top.photo_icon]
+    pos = [345, 26]
+    font_size = 14
+    color = "#B3B3B3"
+    icon = "\ue410"                # mi-photo
+
+    # 右上角 音源图标/标签
+    [screens.status_top.source_badge]
+    pos = [428, 22]
+    font_size = 14 # 基础字号，代码中会自动微调图标大小
+    color = "#1DB954"      # 统一使用全局主题色(绿)作为背景
+    text_color = "#FFFFFF" # 文字颜色
+    
+    [screens.status_top.source_badge.icons]
+    squeezelite = "\uf8f9"         # fa-record-vinyl
+    airplay = "\ue055"             # mi-airplay (原版图标)
+    bluetooth = "\ue1a7"           # mi-bluetooth
+    default = "\ue037"             # mi-play-circle-outline
+
+# ==========================================
+# 2. 主播放屏幕 (Main Screen)
+# ==========================================
+[screens.main]
+show_status_bar = true  # 全局状态栏
+
+    # 背景图设置
+    [screens.main.background]
+    mode = "fullscreen_blur"  # 全屏高斯模糊
+    blur_radius = 1           # 0 表示不模糊，保持原始清晰度
+    overlay_color = "#00000040" # 覆盖一层 25% 透明度的黑色蒙板以突出文字
+
+    # 居中专辑名 (位于歌名上方)
+    [screens.main.album]
+    pos = [234, 75]
+    font_size = 22                 # 稍微缩小，不抢占歌名风头
+    color = "#B3B3B3"              # 用主题色点缀，打破沉闷
+
+
+    # 居中歌曲标题 (位于专辑下方)
+    [screens.main.title]
+    pos = [234, 120]
+    font_size = 62                 # 退让一点字号，增加呼吸感
+    color = "#FFFFFF"
+
+
+    # 歌曲标题下方艺术家 (Beyond)
+    [screens.main.artist]
+    pos = [281, 210]               # 上移使整体排版更紧凑
+    font_size = 24                 # 稍微增大，强调歌手
+    color = "#E0E0E0"              # 高级灰
+
+    # 进度条左侧当前时间 (01:25)
+    [screens.main.current_time]
+    pos = [20, 275]
+    font_size = 14
+    color = "#B3B3B3"
+
+    # 进度条右侧总时间 (04:15)
+    [screens.main.total_time]
+    pos = [400, 275]
+    font_size = 14
+    color = "#B3B3B3"
+
+    # 进度条
+    [screens.main.progress_bar]
+    pos = [20, 262]
+    width = 440
+    height = 3
+    bg_color = "#4D4D4D"           # 更柔和的轨道底色
+    fill_color = "#1DB954"         # 进度填充使用主题色
+
+# ==========================================
+# 3. 蒙板屏幕 (Mask - 音量/弹窗)
+# ==========================================
+[screens.mask]
+opacity = 0.85
+bg_color = "#121212"
+
+# 左侧：上一曲按键 (FontAwesome: fa-backward-step)
+    [screens.mask.prev_btn]
+    pos = [90, 135]            # 图标左上角估算坐标
+    font_size = 60
+    icon = "skip_previous"
+    color = "#FFFFFF"
+
+    # 中间：播放/暂停按键 (当前为暂停状态图标 FontAwesome: fa-pause)
+    [screens.mask.play_pause_btn]
+    pos = [222, 135]           # 视觉修正后的绝对居中对齐
+    font_size = 60
+    icon = "pause"
+    color = "#FFFFFF"
+
+    # 右侧：下一曲按键 (FontAwesome: fa-forward-step)
+    [screens.mask.next_btn]
+    pos = [350, 135]
+    font_size = 60
+    icon = "skip_next"
+    color = "#FFFFFF"
+
+    # 底部：自动关闭提示文本 (自动关闭)
+    [screens.mask.timeout_label]
+    pos = [190, 288]           # 底部水平居中位置
+    font_size = 14
+    color = "#555D6B"          # 暗灰色文本
+    text = "稍后自动关闭"
+
+# ==========================================
+# 4. 信息屏幕 (Info Screen)
+# ==========================================
+[screens.info]
+
+    # --- 左侧分栏：系统状态 (System Status) ---
+    [screens.info.status_title]
+    pos = [20, 68]
+    font_size = 16
+    color = "#1DB954"
+
+    # 服务列表状态灯与文字 (Y轴递增间隔约 28px)
+    [screens.info.service_squeezelite]
+    pos = [20, 96]
+    font_size = 14
+    status_color = "#1DB954"
+    color = "#B3B3B3"
+
+    [screens.info.service_airplay]
+    pos = [20, 124]
+    font_size = 14
+    status_color = "#1DB954"
+    color = "#B3B3B3"
+
+    [screens.info.service_bluetooth]
+    pos = [20, 152]
+    font_size = 14
+    status_color = "#1DB954"
+    color = "#B3B3B3"
+
+    [screens.info.service_autopair]
+    pos = [20, 180]
+    font_size = 14
+    status_color = "#1DB954"
+    color = "#B3B3B3"
+
+    [screens.info.service_pipewire]
+    pos = [20, 208]
+    font_size = 14
+    status_color = "#1DB954"
+    color = "#B3B3B3"
+
+    [screens.info.service_wireplumber]
+    pos = [20, 236]
+    font_size = 14
+    status_color = "#1DB954"
+    color = "#B3B3B3"
+
+    [screens.info.service_volume]
+    pos = [20, 264]
+    font_size = 14
+    status_color = "#1DB954"
+    color = "#B3B3B3"
+
+    # --- 右侧分栏：网络接口 (Network Interfaces) ---
+    [screens.info.network_title]
+    pos = [238, 68]
+    font_size = 16
+    color = "#1DB954"
+
+    [screens.info.eth0_label]
+    pos = [238, 92]
+    font_size = 12
+    color = "#B3B3B3"
+
+    [screens.info.eth0_ip]
+    pos = [238, 110]
+    font_size = 14
+    color = "#FFFFFF"
+
+    [screens.info.wlan0_label]
+    pos = [238, 134]
+    font_size = 12
+    color = "#B3B3B3"
+
+    [screens.info.wlan0_ip]
+    pos = [238, 152]
+    font_size = 14
+    color = "#FFFFFF"
+
+    # --- 右侧分栏：系统信息 (System Info) ---
+    [screens.info.system_title]
+    pos = [238, 185]
+    font_size = 16
+    color = "#1DB954"
+
+    # 标签列 (左对齐)
+    [screens.info.sys_labels]
+    pos = [238, 212]           # Y轴间隔 18px 递增
+    font_size = 12
+    color = "#B3B3B3"
+
+    # 数据数值列 (右对齐，X轴基准约在 460)
+    [screens.info.cpu_val]
+    font_size = 12
+    color = "#FFFFFF"
+
+    [screens.info.ram_usage_val]
+    font_size = 12
+    color = "#FFFFFF"
+
+    [screens.info.disk_usage_val]
+    font_size = 12
+    color = "#FFFFFF"
+    
+    [screens.info.perf_val]
+    font_size = 12
+    color = "#FFFFFF"
+
+    # --- 分割线几何参考 ---
+    [screens.info.divider]
+    start_pos = [228, 68]
+    end_pos = [228, 290]
+    color = "#4D4D4D"
+
+# ==========================================
+# 5. 照片屏幕 (Photo Screen)
+# ==========================================
+[screens.photo]
+show_status_bar = false  # 沉浸模式，隐藏全局状态栏
+transition = "fade"
+interval = 30
+
+# ==========================================
+# 6. 屏保屏幕 (Screensaver - 时钟)
+# ==========================================
+[screens.screensaver]
+show_status_bar = false  # 隐藏全局状态栏
+
+    # 科技感圆环线/雷达网格
+    [screens.screensaver.background_grid]
+    center = [240, 160]         # 科技感圆环中心点设为屏幕正物理中心
+    radius_max = 150            # 最大外圈半径线
+    color = "#FFC107"         # 亮琥珀色背景线条
+    sweep_color = "#FF6600"   # 雷达扫描使用琥珀橙
+
+    # 大时钟主数字 (例如: 12 34)
+    [screens.screensaver.time]
+    pos = [0, 110]
+    font_size = 146
+    color = "#FFEEDD"         # 极亮的主灯丝（高温白炽偏暖黄）
+    glow_color = "#FF2200"    # 泛开的辉光晕染（纯正的氖气红橙色）
+
+    # 冒号闪烁点 (:) - 独立控制或包含在 time 中
+    [screens.screensaver.time_colon]
+    pos = [0, 105]               # 稍微上移以居中
+    font_size = 120
+    color = "#FFEEDD"
+    glow_color = "#FF2200"           # 同步发光体颜色
+
+    # 日期与星期 (Tuesday, April 24) - 居中偏下
+    [screens.screensaver.date]
+    pos = [0, 250]               # Y坐标下移一个字符高度
+    font_size = 46               # 字体稍微缩小以安全适配屏幕高度
+    color = "#B3B3B3"            # 更亮一些的高级灰
+    glow_color = "#000000"     # 黑色外阴影融入背景

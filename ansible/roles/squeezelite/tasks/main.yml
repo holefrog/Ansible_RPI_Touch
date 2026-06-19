@@ -1,0 +1,50 @@
+---
+# tasks file for squeezelite
+
+- name: Install Squeezelite package
+  become: yes
+  ansible.builtin.apt:
+    name: squeezelite
+    state: present
+
+- name: Disable system-wide Squeezelite service
+  become: yes
+  ansible.builtin.systemd:
+    name: squeezelite.service
+    state: stopped
+    enabled: no
+    masked: yes
+  ignore_errors: yes
+
+- name: Install Squeezelite startup script
+  become: yes
+  ansible.builtin.template:
+    src: squeezelite.sh.j2
+    dest: "{{ SYSTEM_BIN_DIR }}/squeezelite.sh"
+    mode: '0755'
+  notify: restart squeezelite service
+
+- name: Ensure user systemd directory exists
+  ansible.builtin.file:
+    path: "{{ mediaplayer_home }}/.config/systemd/user"
+    state: directory
+    mode: '0755'
+  become: no
+
+- name: Generate systemd user service for Squeezelite
+  ansible.builtin.template:
+    src: squeezelite.service.j2
+    dest: "{{ mediaplayer_home }}/.config/systemd/user/squeezelite.service"
+    mode: '0644'
+  become: no
+  notify: 
+    - reload systemd user daemon
+    - restart squeezelite service
+
+- name: Enable and start Squeezelite user service
+  ansible.builtin.systemd:
+    name: squeezelite.service
+    state: started
+    enabled: yes
+    scope: user
+  become: no

@@ -1,0 +1,15 @@
+---
+# handlers file for touchscreen
+
+- name: reload systemd user daemon
+  ansible.builtin.systemd:
+    daemon_reload: yes
+    scope: user
+  become: no
+
+- name: restart touchscreen service
+  ansible.builtin.systemd:
+    name: touchscreen.service
+    state: restarted
+    scope: user
+  become: no

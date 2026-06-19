@@ -1,0 +1,41 @@
+---
+# tasks file for system
+
+# ==========================================
+# 1. System Settings & Environment
+# ==========================================
+- name: Import system settings tasks
+  ansible.builtin.import_tasks: settings.yml
+
+# ==========================================
+# 2. Package Management & Updates
+# ==========================================
+- name: Import package management tasks
+  ansible.builtin.import_tasks: packages.yml
+
+- name: Import system updates configuration
+  ansible.builtin.import_tasks: updates.yml
+
+# ==========================================
+# 3. Hardware Interfaces Configuration
+# ==========================================
+- name: Import I2C base hardware configuration
+  ansible.builtin.import_tasks: hw_i2c.yml
+
+- name: Import Touchscreen hardware configuration (SPI & I2C-3)
+  ansible.builtin.import_tasks: hw_touchscreen.yml
+
+- name: Import WM8960 audio hardware configuration
+  ansible.builtin.import_tasks: hw_wm8960.yml
+
+# ==========================================
+# 4. Apply System Hardware Configuration
+# ==========================================
+- name: Reboot to apply system hardware configuration changes
+  become: yes
+  ansible.builtin.reboot:
+    reboot_timeout: 300
+  when: >
+    (i2c_boot_config is defined and i2c_boot_config.changed) or
+    (touchscreen_boot_config is defined and touchscreen_boot_config.changed) or
+    (wm8960_boot_config is defined and wm8960_boot_config.results | default([]) | selectattr('changed') | list | length > 0)

@@ -1,0 +1,54 @@
+---
+# tasks file for volume
+
+- name: Install volume control script
+  become: yes
+  ansible.builtin.template:
+    src: volume.sh.j2
+    dest: "/usr/local/bin/volume.sh"
+    mode: '0755'
+  notify: restart volume service
+
+- name: Check if old system-level volume service exists
+  ansible.builtin.stat:
+    path: /etc/systemd/system/volume.service
+  register: old_volume_service
+
+- name: Cleanup old mistaken system-level volume service
+  become: yes
+  ansible.builtin.systemd:
+    name: volume.service
+    state: stopped
+    enabled: no
+  when: old_volume_service.stat.exists
+
+- name: Remove old system-level volume service file
+  become: yes
+  ansible.builtin.file:
+    path: /etc/systemd/system/volume.service
+    state: absent
+
+- name: Ensure user systemd directory exists
+  ansible.builtin.file:
+    path: "{{ mediaplayer_home }}/.config/systemd/user"
+    state: directory
+    mode: '0755'
+  become: no
+
+- name: Generate volume user service
+  ansible.builtin.template:
+    src: volume.service.j2
+    dest: "{{ mediaplayer_home }}/.config/systemd/user/volume.service"
+    mode: '0644'
+  become: no
+  notify: 
+    - reload systemd user daemon
+    - restart volume service
+
+- name: Enable and start volume user service
+  ansible.builtin.systemd:
+    name: volume.service
+    state: started
+    enabled: yes
+    scope: user
+  become: no
