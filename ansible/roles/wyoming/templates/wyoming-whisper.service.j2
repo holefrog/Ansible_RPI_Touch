@@ -7,7 +7,7 @@ Type=simple
 ExecStart={{ mediaplayer_home }}/wyoming/whisper/bin/python3 -m wyoming_faster_whisper \
     --model base \
     --language zh \
-    --initial-prompt "请打开小米台灯。请关上小米台灯。请打开客厅的灯。请关上客厅的灯。现在几点了？大点声，小点声，暂停，继续播放，下一首，上一首。" \
+    --initial-prompt "{{ whisper_initial_prompt | default('') }}" \
     --device cpu \
     --compute-type int8 \
     --uri tcp://0.0.0.0:10300 \
