@@ -1,15 +1,11 @@
 ---
-- name: Create wyoming-whisper venv
-  ansible.builtin.command:
-    cmd: "python3 -m venv {{ mediaplayer_home }}/wyoming/whisper"
-    creates: "{{ mediaplayer_home }}/wyoming/whisper/bin/python"
-
 - name: Install wyoming-faster-whisper
   ansible.builtin.pip:
     name:
       - wyoming-faster-whisper
       - audioop-lts
     virtualenv: "{{ mediaplayer_home }}/wyoming/whisper"
+    virtualenv_command: "python3 -m venv"
     state: present
 
 - name: Deploy wyoming-whisper.service

@@ -1,13 +1,9 @@
 ---
-- name: Create wyoming-satellite venv
-  ansible.builtin.command:
-    cmd: "python3 -m venv {{ mediaplayer_home }}/wyoming/satellite"
-    creates: "{{ mediaplayer_home }}/wyoming/satellite/bin/python"
-
 - name: Install wyoming-satellite
   ansible.builtin.pip:
     name: "wyoming-satellite"
     virtualenv: "{{ mediaplayer_home }}/wyoming/satellite"
+    virtualenv_command: "python3 -m venv"
     state: present
 
 - name: Deploy event scripts

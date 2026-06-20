@@ -1,15 +1,11 @@
 ---
-- name: Create wyoming-porcupine1 venv
-  ansible.builtin.command:
-    cmd: "python3 -m venv {{ mediaplayer_home }}/wyoming/porcupine1"
-    creates: "{{ mediaplayer_home }}/wyoming/porcupine1/bin/python"
-
 - name: Install wyoming-porcupine1
   ansible.builtin.pip:
     name:
       - wyoming-porcupine1
       - audioop-lts
     virtualenv: "{{ mediaplayer_home }}/wyoming/porcupine1"
+    virtualenv_command: "python3 -m venv"
     state: present
 
 - name: Deploy wyoming-porcupine1.service

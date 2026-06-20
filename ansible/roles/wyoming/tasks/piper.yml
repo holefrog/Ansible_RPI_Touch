@@ -1,15 +1,11 @@
 ---
-- name: Create wyoming-piper venv
-  ansible.builtin.command:
-    cmd: "python3 -m venv {{ mediaplayer_home }}/wyoming/piper"
-    creates: "{{ mediaplayer_home }}/wyoming/piper/bin/python"
-
 - name: Install wyoming-piper
   ansible.builtin.pip:
     name:
       - wyoming-piper
       - audioop-lts
     virtualenv: "{{ mediaplayer_home }}/wyoming/piper"
+    virtualenv_command: "python3 -m venv"
     state: present
 
 - name: Ensure Piper data directory exists
