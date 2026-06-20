@@ -43,10 +43,3 @@
     regexp: '^include-system-site-packages\s*='
     line: 'include-system-site-packages = true'
   become: no
-
-- name: Force TERM to xterm-256color in bashrc for terminal compatibility (top, htop)
-  ansible.builtin.lineinfile:
-    path: "~/.bashrc"
-    regexp: '^export TERM='
-    line: 'export TERM=xterm-256color'
-  become: no

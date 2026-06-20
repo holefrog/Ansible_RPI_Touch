@@ -22,3 +22,5 @@
     - python3-numpy
     - python3-requests
     - python3-pydbus
+    - kitty-terminfo
+

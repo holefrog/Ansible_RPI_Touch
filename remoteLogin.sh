@@ -50,6 +50,6 @@ echo -e "${GREEN}>>> 正在连接 $HOST (端口: $PORT)...${NC}"
 ssh-keygen -f "$HOME/.ssh/known_hosts" -R "$HOST" >/dev/null 2>&1 || true
 
 # 正式进入
-TERM=xterm-256color $SSH_CMD $SSH_OPTS "$REMOTE"
+$SSH_CMD $SSH_OPTS "$REMOTE"
 
 echo -e "${NC}>>> 已断开连接。${NC}"
