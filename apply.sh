@@ -10,14 +10,14 @@ echo "--------------------------------------------------------"
 echo "1) Deploy      - 执行完整部署 (site.yml)"
 echo "2) Status      - 检查服务状态 (status.yml)"
 echo "--------------------------------------------------------"
-read -rp "请选择 [1/2，直接回车默认 2 Deploy]: " choice
+read -rp "请选择 [1/2，直接回车默认 2 Status]: " choice
 
 case "$choice" in
-    1|"")
+    1)
         MODE="Deploy"
         PB="site.yml"
         ;;
-    2)
+    2|"")
         MODE="Status"
         PB="status.yml"
         ;;
