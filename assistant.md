@@ -61,11 +61,7 @@
 * `ui_screen_assistant.py`：使用 PIL 绘制“呼吸灯、雷达扫描、声波”等炫酷的 AI 交互动画。
 * `main.py`：融合逻辑，完成与硬件播放器的 `Pause/Play` 同步。
 
-### 3. 避坑指南：为什么服务会卡在 `🟡 activating`？
-在首次执行 Ansible 部署后，如果使用 `ansible-playbook status.yml` 查看服务状态，可能会发现 `wyoming-satellite` 长期卡在 `activating` 状态。
-* **原因分析**：这是因为我们在 Satellite 中强行开启了**麦克风自动增益 (`--mic-auto-gain`)** 和 **主动降噪 (`--mic-noise-suppression`)**。这两个高级音频特性依赖于 C++ 编写的底层 `webrtc-noise-gain` 库。
-* **底层机制**：由于树莓派是 ARM aarch64 架构，没有可以直接下载的预编译二进制包（Wheel），所以 pip 会在后台现场下载 C++ 源码并进行编译。
-* **解决方案**：耐心等待 2 到 3 分钟即可。此时树莓派的 CPU 正在全力编译，编译完成后服务会自动转为 `🟢 active`，并且拥有极佳的抗噪拾音能力。为了自动化这一过程，Ansible 部署包中的安装包名已显式声明为 `wyoming-satellite[webrtc]`。
+
 
 ---
 
