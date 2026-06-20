@@ -111,7 +111,7 @@
 
 ### 🔊 硬件级发声底座
 * 采用 **Waveshare WM8960 Sound Board** 提供高保真 I2S 硬件解码输出。
-  > **💡 独家驱动优化**：由于官方只为双麦克风版 (12.288MHz) 的 HAT 提供了 Linux 驱动，导致单麦克风版 (24MHz) 的 Audio Board 在树莓派上录音时会产生时钟错位与纯白噪声。我们针对此 24MHz 单麦克风版本的硬件，彻底修复并生成了专属的底层 Linux 驱动 `wm8960-audio-board.dtbo`，并内置在了 Ansible 中实现**全自动无感部署**与音频路由配置。详细的排查历程与技术细节请见 [RECORD.md](documents/WM8960/RECORD.md)。
+  > **💡 独家驱动优化**：由于官方只为双麦克风版 (12.288MHz) 的 HAT 提供了 Linux 驱动，导致单麦克风版 (24MHz) 的 Audio Board 在树莓派上录音时会产生时钟错位与纯白噪声。我们针对此 24MHz 单麦克风版本的硬件，彻底修复并生成了专属的底层 Linux 驱动 `wm8960-audio-card.dtbo`，并内置在了 Ansible 中实现**全自动无感部署**与音频路由配置。详细的排查历程与技术细节请见 [RECORD.md](documents/WM8960/RECORD.md)。
 * 独立音量控制与优先级自动管理。
 
 ---

@@ -71,7 +71,7 @@ The entire system is deployed via **fully automated, idempotent Ansible playbook
 
 ### 🔊 Hardware-Grade Audio Base
 * Uses the **Waveshare WM8960 Sound Board** for high-fidelity I2S hardware decoding output.
-  > **💡 Exclusive Driver Optimization**: Since the official Linux driver was designed specifically for the dual-mic HAT version (12.288MHz crystal), using it directly on the single-mic Audio Board version (24MHz crystal) causes severe clock mismatches and pure white noise during recording. We reverse-engineered and generated a custom native Linux driver `wm8960-audio-board.dtbo` specifically for this 24MHz hardware. Ansible will **automatically deploy** this driver and configure the correct ALSA audio routing. For detailed troubleshooting records and technical details, please see [RECORD.md](documents/WM8960/RECORD.md).
+  > **💡 Exclusive Driver Optimization**: Since the official Linux driver was designed specifically for the dual-mic HAT version (12.288MHz crystal), using it directly on the single-mic Audio Board version (24MHz crystal) causes severe clock mismatches and pure white noise during recording. We reverse-engineered and generated a custom native Linux driver `wm8960-audio-card.dtbo` specifically for this 24MHz hardware. Ansible will **automatically deploy** this driver and configure the correct ALSA audio routing. For detailed troubleshooting records and technical details, please see [RECORD.md](documents/WM8960/RECORD.md).
 * Independent volume control and automatic priority management.
 
 ---
