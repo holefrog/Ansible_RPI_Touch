@@ -38,6 +38,19 @@
     state: absent
   register: wm8960_boot_config_old
 
+- name: Reboot if WM8960 boot config changed
+  become: yes
+  ansible.builtin.reboot:
+    msg: "Rebooting to apply new WM8960 Audio Board device tree overlay"
+    connect_timeout: 5
+    reboot_timeout: 600
+    pre_reboot_delay: 0
+    post_reboot_delay: 30
+    test_command: whoami
+  when: >
+    (wm8960_boot_config is defined and wm8960_boot_config.changed) or
+    (wm8960_boot_config_old is defined and wm8960_boot_config_old.changed)
+
 - name: Configure WM8960 amixer settings
   become: yes
   ansible.builtin.shell: |
@@ -47,4 +60,3 @@
     amixer -c wm8960audioboar cset name='Capture Volume' 63
     amixer -c wm8960audioboar cset name='ADC PCM Capture Volume' 255
     amixer -c wm8960audioboar cset name='ADC Data Output Select' 1
-  ignore_errors: true
