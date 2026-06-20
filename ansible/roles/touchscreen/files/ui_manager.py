@@ -195,6 +195,10 @@ class UIManager:
             self.frame_count = 0
             self.last_fps_calc_time = current_time
 
+        # 保持内部音量变量与后台实际音量同步
+        if player_state and player_state.volume >= 0:
+            self.current_display_volume = max(0, min(100, player_state.volume))
+
         # ── 决定是否需要渲染本帧 ──────────────────────────────────────────
         if screen_saver.is_off and not is_playing:
             # 屏幕关闭且无播放，跳过渲染
