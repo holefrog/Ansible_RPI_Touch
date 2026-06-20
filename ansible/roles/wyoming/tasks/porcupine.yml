@@ -6,7 +6,9 @@
 
 - name: Install wyoming-porcupine1
   ansible.builtin.pip:
-    name: wyoming-porcupine1
+    name:
+      - wyoming-porcupine1
+      - audioop-lts
     virtualenv: "{{ mediaplayer_home }}/wyoming/porcupine1"
     state: present
 
