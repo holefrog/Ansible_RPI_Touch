@@ -61,3 +61,66 @@
     name: NetworkManager-wait-online.service
     enabled: no
     masked: yes
+
+- name: Mount /tmp as tmpfs to eliminate I/O bottleneck and maximize performance
+  become: yes
+  ansible.posix.mount:
+    path: /tmp
+    src: tmpfs
+    fstype: tmpfs
+    opts: defaults,noatime,nosuid,size=500m
+    state: mounted
+  ignore_errors: yes
+
+- name: Check if log2ram is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/log2ram
+  register: log2ram_check
+
+- name: Install log2ram to maximize performance by avoiding SD card log writes
+  become: yes
+  ansible.builtin.shell: |
+    wget https://github.com/azlux/log2ram/archive/master.tar.gz -O /tmp/log2ram.tar.gz
+    tar zxf /tmp/log2ram.tar.gz -C /tmp
+    cd /tmp/log2ram-master
+    chmod +x install.sh
+    ./install.sh
+    rm -rf /tmp/log2ram-master /tmp/log2ram.tar.gz
+  when: not log2ram_check.stat.exists
+
+- name: Enable log2ram service
+  become: yes
+  ansible.builtin.systemd:
+    name: log2ram
+    enabled: yes
+    state: started
+  ignore_errors: yes
+
+- name: Disable and remove dphys-swapfile to eliminate SD card paging I/O
+  become: yes
+  ansible.builtin.apt:
+    name: dphys-swapfile
+    state: absent
+    purge: yes
+
+- name: Mount /var/tmp as tmpfs to eliminate I/O bottleneck
+  become: yes
+  ansible.posix.mount:
+    path: /var/tmp
+    src: tmpfs
+    fstype: tmpfs
+    opts: defaults,noatime,nosuid,size=250m
+    state: mounted
+  ignore_errors: yes
+
+- name: Tune kernel sysctl for 4GB RAM to maximize performance
+  become: yes
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { key: 'vm.vfs_cache_pressure', value: '50' }
+    - { key: 'vm.dirty_ratio', value: '20' }
+    - { key: 'vm.dirty_background_ratio', value: '10' }
