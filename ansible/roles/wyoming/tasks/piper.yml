@@ -6,7 +6,9 @@
 
 - name: Install wyoming-piper
   ansible.builtin.pip:
-    name: wyoming-piper
+    name:
+      - wyoming-piper
+      - audioop-lts
     virtualenv: "{{ mediaplayer_home }}/wyoming/piper"
     state: present
 

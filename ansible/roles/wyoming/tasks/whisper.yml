@@ -6,7 +6,9 @@
 
 - name: Install wyoming-faster-whisper
   ansible.builtin.pip:
-    name: wyoming-faster-whisper
+    name:
+      - wyoming-faster-whisper
+      - audioop-lts
     virtualenv: "{{ mediaplayer_home }}/wyoming/whisper"
     state: present
 
