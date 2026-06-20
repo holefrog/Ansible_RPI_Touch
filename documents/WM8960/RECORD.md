@@ -31,7 +31,7 @@
 为了彻底摆脱“有毒”的原生设备树，且不依赖官方提供的旧版 Shell 脚本安装包，我们设计了一套**纯粹基于 Ansible 的自动化原生部署方案**。
 
 ### 第一步：编写专属的 24MHz 设备树 (DTS)
-我们在 Ansible 项目的 `roles/system/files/wm8960-audio-board.dts` 中，基于原生驱动修改出了一份专属的 Overlay，最关键的是修复了时钟频率：
+我们在 Ansible 项目的 `roles/system/files/wm8960-audio-card.dts` 中，基于原生驱动修改出了一份专属的 Overlay，最关键的是修复了时钟频率：
 ```dts
 // ... 摘录关键部分 ...
 wm8960_mclk: wm8960_mclk {
@@ -45,9 +45,9 @@ wm8960_mclk: wm8960_mclk {
 ### 第二步：Ansible 自动化编译与内核加载
 在 `hw_wm8960.yml` 部署剧本中，增加自动化任务：
 1. 确保目标机器安装 `device-tree-compiler`。
-2. 自动拷贝 `wm8960-audio-board.dts` 到目标机器。
-3. 执行 `dtc` 命令将其编译为 `/boot/firmware/overlays/wm8960-audio-board.dtbo`。
-4. 修改 `/boot/firmware/config.txt`，移除旧的 `wm8960-soundcard`，应用全新的 `dtoverlay=wm8960-audio-board`。
+2. 自动拷贝 `wm8960-audio-card.dts` 到目标机器。
+3. 执行 `dtc` 命令将其编译为 `/boot/firmware/overlays/wm8960-audio-card.dtbo`。
+4. 修改 `/boot/firmware/config.txt`，移除旧的 `wm8960-soundcard`，应用全新的 `dtoverlay=wm8960-audio-card`。
 
 ### 第三步：ALSA 链路打通与单声道映射
 在系统启动并识别到专属声卡后，通过一连串 `amixer` 命令打通左声道链路以激活 DAPM，同时将左声道数据复制到右声道以实现完美的“单声道录立体声”：
