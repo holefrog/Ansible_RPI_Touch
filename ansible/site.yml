@@ -22,4 +22,6 @@
     - role: bluetooth
       tags: ['bluetooth']
     - role: touchscreen
-      tags: ['touchscreen', 'touchscreen']
+      tags: ['touchscreen']
+    - role: wyoming
+      tags: ['wyoming']

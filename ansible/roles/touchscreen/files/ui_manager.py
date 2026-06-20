@@ -13,6 +13,7 @@ from ui_status_bar import StatusBarRenderer
 from ui_screen_photo import PhotoScreenRenderer
 from ui_screen_mask import MaskScreenRenderer
 from ui_volume_popup import VolumePopupRenderer
+from ui_screen_assistant import AssistantScreenRenderer
 
 
 class Overlay(Enum):
@@ -21,6 +22,7 @@ class Overlay(Enum):
     VOLUME = auto()
     INFO = auto()
     PHOTO = auto()
+    ASSISTANT = auto()
 
 
 class UIManager:
@@ -42,6 +44,7 @@ class UIManager:
         self.ui_photo      = PhotoScreenRenderer(display_ctx, cfg.get("ui", {}))
         self.ui_mask       = MaskScreenRenderer(display_ctx, cfg.get("ui", {}))
         self.ui_volume     = VolumePopupRenderer(display_ctx, cfg.get("ui", {}))
+        self.ui_assistant  = AssistantScreenRenderer(display_ctx, cfg.get("ui", {}))
 
         # 2. 浮层状态：单一枚举变量，强制互斥
         self.active_overlay = Overlay.NONE
@@ -71,6 +74,10 @@ class UIManager:
 
         # 8. 屏保刷新节拍（替代 render_key）
         self._last_saver_second = -1
+
+        # 9. Assistant 状态
+        self.voice_state = "idle"
+        self.transcript_text = ""
 
     # ── 对外接口：供 InputController 查询当前 UI 状态 ──────────────────────
 
@@ -153,6 +160,18 @@ class UIManager:
             self.mask_exit_at = current_time + self.MASK_HIGHLIGHT_DURATION
             self.overlay_timer = current_time
 
+        elif act_type == "SHOW_ASSISTANT":
+            self.active_overlay = Overlay.ASSISTANT
+            self.voice_state = action.get("state", "listening")
+            self.transcript_text = action.get("text", "")
+            self.overlay_timer = current_time
+
+        elif act_type == "CLOSE_ASSISTANT":
+            if self.active_overlay == Overlay.ASSISTANT:
+                self.active_overlay = Overlay.NONE
+                self.voice_state = "idle"
+                self.transcript_text = ""
+
     def dismiss_screens_on_play(self):
         """当从空闲切入播放状态时，清理所有浮层"""
         self.active_overlay = Overlay.NONE
@@ -204,8 +223,8 @@ class UIManager:
             # 屏幕关闭且无播放，跳过渲染
             return
 
-        if is_playing or playing_transition:
-            # 播放中：始终渲染（跑马灯滚动、进度条推进需要连续帧）
+        if is_playing or playing_transition or self.active_overlay == Overlay.ASSISTANT:
+            # 播放中或处于助手状态：始终渲染（跑马灯滚动、进度条推进、语音动画需要连续帧）
             should_render = True
         else:
             # 屏保（时钟）：每秒刷新一次即可
@@ -263,6 +282,9 @@ class UIManager:
 
             if overlay == Overlay.VOLUME:
                 img = self.ui_volume.render(img, self.current_display_volume)
+                
+            if overlay == Overlay.ASSISTANT:
+                img = self.ui_assistant.render(img, self.voice_state, self.transcript_text)
 
         # ── SPI 发送（脏区差异刷新）────────────────────────────────────────
         if img:

@@ -1,0 +1,19 @@
+[Unit]
+Description=Wyoming Faster Whisper (STT)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart={{ mediaplayer_home }}/wyoming/whisper/bin/python3 -m wyoming_faster_whisper \
+    --model tiny \
+    --language zh \
+    --initial-prompt "以下是普通话句子。" \
+    --device cpu \
+    --compute-type int8 \
+    --uri tcp://0.0.0.0:10300 \
+    --data-dir {{ mediaplayer_home }}/wyoming/whisper/data
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

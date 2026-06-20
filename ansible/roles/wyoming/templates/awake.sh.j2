@@ -1,0 +1,3 @@
+#!/bin/bash
+# 触发监听界面的 UDP 包
+echo '{"event": "awake"}' | nc -w 1 -u 127.0.0.1 10701

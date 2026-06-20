@@ -1,0 +1,14 @@
+[Unit]
+Description=Wyoming Porcupine1 (Wake Word)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart={{ mediaplayer_home }}/wyoming/porcupine1/bin/python3 -m wyoming_porcupine1 \
+    --keyword bumblebee \
+    --uri tcp://127.0.0.1:10400
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,124 @@
+---
+# ansible/roles/wyoming/tasks/main.yml
+
+- name: Install Wyoming dependencies
+  become: yes
+  ansible.builtin.apt:
+    name:
+      - python3-venv
+      - python3-pip
+      - portaudio19-dev
+      - ffmpeg
+      - espeak
+    state: present
+
+- name: Create Wyoming base directory
+  ansible.builtin.file:
+    path: "{{ mediaplayer_home }}/wyoming"
+    state: directory
+    mode: '0755'
+
+# ── 1. Porcupine1 (Wake Word) ────────────────────────────────────────────────
+- name: Create wyoming-porcupine1 venv
+  ansible.builtin.command:
+    cmd: "python3 -m venv {{ mediaplayer_home }}/wyoming/porcupine1"
+    creates: "{{ mediaplayer_home }}/wyoming/porcupine1/bin/python"
+
+- name: Install wyoming-porcupine1
+  ansible.builtin.pip:
+    name: wyoming-porcupine1
+    virtualenv: "{{ mediaplayer_home }}/wyoming/porcupine1"
+    state: present
+
+- name: Deploy wyoming-porcupine1.service
+  ansible.builtin.template:
+    src: wyoming-porcupine1.service.j2
+    dest: "{{ mediaplayer_home }}/.config/systemd/user/wyoming-porcupine1.service"
+    mode: '0644'
+  notify: restart wyoming-porcupine1
+
+# ── 2. Faster-Whisper (STT) ──────────────────────────────────────────────────
+- name: Create wyoming-whisper venv
+  ansible.builtin.command:
+    cmd: "python3 -m venv {{ mediaplayer_home }}/wyoming/whisper"
+    creates: "{{ mediaplayer_home }}/wyoming/whisper/bin/python"
+
+- name: Install wyoming-faster-whisper
+  ansible.builtin.pip:
+    name: wyoming-faster-whisper
+    virtualenv: "{{ mediaplayer_home }}/wyoming/whisper"
+    state: present
+
+- name: Deploy wyoming-whisper.service
+  ansible.builtin.template:
+    src: wyoming-whisper.service.j2
+    dest: "{{ mediaplayer_home }}/.config/systemd/user/wyoming-whisper.service"
+    mode: '0644'
+  notify: restart wyoming-whisper
+
+# ── 3. Piper (TTS) ───────────────────────────────────────────────────────────
+- name: Create wyoming-piper venv
+  ansible.builtin.command:
+    cmd: "python3 -m venv {{ mediaplayer_home }}/wyoming/piper"
+    creates: "{{ mediaplayer_home }}/wyoming/piper/bin/python"
+
+- name: Install wyoming-piper
+  ansible.builtin.pip:
+    name: wyoming-piper
+    virtualenv: "{{ mediaplayer_home }}/wyoming/piper"
+    state: present
+
+- name: Ensure Piper data directory exists
+  ansible.builtin.file:
+    path: "{{ mediaplayer_home }}/wyoming/piper/data"
+    state: directory
+
+# 简单起见，这里假设 wyoming-piper 启动时会自动下载模型
+- name: Deploy wyoming-piper.service
+  ansible.builtin.template:
+    src: wyoming-piper.service.j2
+    dest: "{{ mediaplayer_home }}/.config/systemd/user/wyoming-piper.service"
+    mode: '0644'
+  notify: restart wyoming-piper
+
+# ── 4. Satellite (Orchestrator) ──────────────────────────────────────────────
+- name: Create wyoming-satellite venv
+  ansible.builtin.command:
+    cmd: "python3 -m venv {{ mediaplayer_home }}/wyoming/satellite"
+    creates: "{{ mediaplayer_home }}/wyoming/satellite/bin/python"
+
+- name: Install wyoming-satellite
+  ansible.builtin.pip:
+    name: wyoming-satellite
+    virtualenv: "{{ mediaplayer_home }}/wyoming/satellite"
+    state: present
+
+- name: Deploy event scripts
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "{{ mediaplayer_home }}/wyoming/satellite/{{ item }}"
+    mode: '0755'
+  loop:
+    - awake.sh
+    - done.sh
+
+- name: Deploy wyoming-satellite.service
+  ansible.builtin.template:
+    src: wyoming-satellite.service.j2
+    dest: "{{ mediaplayer_home }}/.config/systemd/user/wyoming-satellite.service"
+    mode: '0644'
+  notify: restart wyoming-satellite
+
+# ── 5. Enable and Start Services ─────────────────────────────────────────────
+- name: Enable and start Wyoming services
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+    scope: user
+    daemon_reload: yes
+  loop:
+    - wyoming-porcupine1.service
+    - wyoming-whisper.service
+    - wyoming-piper.service
+    - wyoming-satellite.service

@@ -1,0 +1,22 @@
+[Unit]
+Description=Wyoming Satellite (Orchestrator)
+After=network.target wyoming-porcupine1.service
+
+[Service]
+Type=simple
+ExecStart={{ mediaplayer_home }}/wyoming/satellite/bin/python3 -m wyoming_satellite \
+    --name "Raspberry Pi Touch" \
+    --uri tcp://0.0.0.0:10700 \
+    --mic-command "arecord -D default -r 16000 -c 1 -f S16_LE -t raw" \
+    --mic-noise-suppression 2 \
+    --mic-auto-gain 15 \
+    --snd-command "aplay -D default -r 22050 -c 1 -f S16_LE -t raw" \
+    --wake-uri tcp://127.0.0.1:10400 \
+    --wake-word-name bumblebee \
+    --awake-command "{{ mediaplayer_home }}/wyoming/satellite/awake.sh" \
+    --done-command "{{ mediaplayer_home }}/wyoming/satellite/done.sh"
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

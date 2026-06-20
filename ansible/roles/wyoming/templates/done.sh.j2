@@ -1,0 +1,3 @@
+#!/bin/bash
+# 结束监听界面的 UDP 包
+echo '{"event": "done"}' | nc -w 1 -u 127.0.0.1 10701

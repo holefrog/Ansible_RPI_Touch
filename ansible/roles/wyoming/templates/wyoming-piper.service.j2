@@ -1,0 +1,15 @@
+[Unit]
+Description=Wyoming Piper (TTS)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart={{ mediaplayer_home }}/wyoming/piper/bin/python3 -m wyoming_piper \
+    --voice zh_CN-huayan-medium \
+    --uri tcp://0.0.0.0:10200 \
+    --data-dir {{ mediaplayer_home }}/wyoming/piper/data
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

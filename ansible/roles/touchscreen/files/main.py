@@ -18,6 +18,7 @@ from ft6336u import ft6336u
 from state_manager import StateManager
 from input_controller import InputController
 from ui_manager import UIManager
+from assistant_listener import AssistantListener
 
 # ============================================
 # 全局配置参数
@@ -86,6 +87,12 @@ def main():
         input_ctrl = InputController(cfg, display_ctx, lms_params, pactl_env)
         ui_mgr = UIManager(display_ctx, cfg)
 
+        # ============================================
+        # 3.5 初始化并启动语音助手监听器
+        # ============================================
+        assistant_listener = AssistantListener()
+        assistant_listener.start()
+
         # 注册截屏信号监听器 (SIGUSR1)
         def sigusr1_handler(signum, frame):
             if getattr(ui_mgr, 'last_screen_img', None):
@@ -106,6 +113,7 @@ def main():
     was_playing = False
     last_touch_time = 0.0
     last_player_signature = None
+    was_playing_before_voice = False
 
     while True:
         try:
@@ -144,6 +152,37 @@ def main():
                         input_ctrl.execute_seek_cmd(player_state, action.get("value"))
                     elif act_type == "MASK_CLICK":
                         input_ctrl.execute_player_cmd(player_state, action.get("button"))
+
+            # ── 消费语音助手事件 ──────────────────────────────────────────────
+            while True:
+                ast_evt = assistant_listener.get_event()
+                if not ast_evt:
+                    break
+                    
+                screen_saver.wake()
+                evt_type = ast_evt.get("event")
+                
+                if evt_type == "awake":
+                    # 记录被打断前的播放状态
+                    is_playing = player_state is not None and not getattr(player_state, "is_paused", True) and not player_state.is_clock
+                    was_playing_before_voice = is_playing
+                    if is_playing:
+                        input_ctrl.execute_player_cmd(player_state, "pause")
+                        
+                    ui_mgr.handle_action({"type": "SHOW_ASSISTANT", "state": "listening"}, current_time, player_state)
+                    
+                elif evt_type == "transcript":
+                    text = ast_evt.get("text", "")
+                    ui_mgr.handle_action({"type": "SHOW_ASSISTANT", "state": "processing", "text": text}, current_time, player_state)
+                    
+                elif evt_type == "tts-start":
+                    ui_mgr.handle_action({"type": "SHOW_ASSISTANT", "state": "speaking", "text": ui_mgr.transcript_text}, current_time, player_state)
+                    
+                elif evt_type in ("done", "timeout", "error"):
+                    ui_mgr.handle_action({"type": "CLOSE_ASSISTANT"}, current_time, player_state)
+                    if was_playing_before_voice:
+                        input_ctrl.execute_player_cmd(player_state, "play")
+                        was_playing_before_voice = False
 
             # ── 播放状态判断 ──────────────────────────────────────────────────
             is_playing = player_state is not None and not player_state.is_clock
@@ -195,6 +234,9 @@ def main():
 
     # ── 退出清理 ──────────────────────────────────────────────────────────────
     try:
+        if 'assistant_listener' in locals():
+            assistant_listener.stop()
+            
         from PIL import Image
         if 'display_ctx' in locals() and 'device' in display_ctx:
             display_ctx['device'].show_image(
