@@ -52,22 +52,22 @@ wm8960_mclk: wm8960_mclk {
 ### 第三步：ALSA 链路打通与单声道映射
 在系统启动并识别到专属声卡后，通过一连串 `amixer` 命令打通左声道链路以激活 DAPM，同时将左声道数据复制到右声道以实现完美的“单声道录立体声”：
 ```bash
-# 为了防止设备号变动，统一使用声卡名称 -c wm8960audioboar
+# 为了防止设备号变动，统一使用声卡名称 -c wm8960audiocard
 # 1. 开启左声道输入到 Boost Mixer 的开关 (触发 DAPM 自动开启 Mic Bias)
-amixer -c wm8960audioboar cset name='Left Boost Mixer LINPUT1 Switch' on
+amixer -c wm8960audiocard cset name='Left Boost Mixer LINPUT1 Switch' on
 
 # 2. 开启 Boost Mixer 到 Input Mixer 的开关
-amixer -c wm8960audioboar cset name='Left Input Mixer Boost Switch' on
+amixer -c wm8960audiocard cset name='Left Input Mixer Boost Switch' on
 
 # 3. 开启 ADC 捕获的总开关
-amixer -c wm8960audioboar cset name='Capture Switch' on
+amixer -c wm8960audiocard cset name='Capture Switch' on
 
 # 4. 设置捕获音量
-amixer -c wm8960audioboar cset name='Capture Volume' 63
-amixer -c wm8960audioboar cset name='ADC PCM Capture Volume' 255
+amixer -c wm8960audiocard cset name='Capture Volume' 63
+amixer -c wm8960audiocard cset name='ADC PCM Capture Volume' 255
 
 # 5. 【最关键的映射】将左侧单声道 ADC 数据复制给双声道的左右音轨
-amixer -c wm8960audioboar cset name='ADC Data Output Select' 1
+amixer -c wm8960audiocard cset name='ADC Data Output Select' 1
 ```
 
 ---
