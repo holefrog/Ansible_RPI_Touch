@@ -1,0 +1,27 @@
+---
+- name: Create wyoming-satellite venv
+  ansible.builtin.command:
+    cmd: "python3 -m venv {{ mediaplayer_home }}/wyoming/satellite"
+    creates: "{{ mediaplayer_home }}/wyoming/satellite/bin/python"
+
+- name: Install wyoming-satellite
+  ansible.builtin.pip:
+    name: "wyoming-satellite[webrtc]"
+    virtualenv: "{{ mediaplayer_home }}/wyoming/satellite"
+    state: present
+
+- name: Deploy event scripts
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "{{ mediaplayer_home }}/wyoming/satellite/{{ item }}"
+    mode: '0755'
+  loop:
+    - awake.sh
+    - done.sh
+
+- name: Deploy wyoming-satellite.service
+  ansible.builtin.template:
+    src: wyoming-satellite.service.j2
+    dest: "{{ mediaplayer_home }}/.config/systemd/user/wyoming-satellite.service"
+    mode: '0644'
+  notify: restart wyoming-satellite

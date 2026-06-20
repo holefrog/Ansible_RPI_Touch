@@ -1,0 +1,23 @@
+---
+- name: Create wyoming-piper venv
+  ansible.builtin.command:
+    cmd: "python3 -m venv {{ mediaplayer_home }}/wyoming/piper"
+    creates: "{{ mediaplayer_home }}/wyoming/piper/bin/python"
+
+- name: Install wyoming-piper
+  ansible.builtin.pip:
+    name: wyoming-piper
+    virtualenv: "{{ mediaplayer_home }}/wyoming/piper"
+    state: present
+
+- name: Ensure Piper data directory exists
+  ansible.builtin.file:
+    path: "{{ mediaplayer_home }}/wyoming/piper/data"
+    state: directory
+
+- name: Deploy wyoming-piper.service
+  ansible.builtin.template:
+    src: wyoming-piper.service.j2
+    dest: "{{ mediaplayer_home }}/.config/systemd/user/wyoming-piper.service"
+    mode: '0644'
+  notify: restart wyoming-piper
