@@ -72,13 +72,24 @@ amixer -c wm8960audioboar cset name='ADC Data Output Select' 1
 
 ---
 
-## 4. 验证结果
-应用上述修复部署后重启，使用以下命令测试：
+## 4. 验证结果与正确录音姿势
+应用上述修复部署后重启，使用以下命令进行录音测试：
+
+### ❌ 错误的录音姿势 (产生白噪声)
 ```bash
-arecord -f cd -Dhw:0 -d 15 test.wav
+arecord -Dplughw:0 -f cd -d 5 test.wav
+```
+**原因**：`-f cd` 代表请求 16-bit 44100Hz 的数据。原生的底层驱动此时暴露的硬件最原始支持位宽是 24-bit/32-bit (S24_LE/S32_LE)。如果使用 ALSA 的软件转换层 `plughw:0` 试图向下截断 (32转16) 或者降频 (48000转44100)，在树莓派平台上极易触发字节序或对齐 BUG，导致音频完全破音，输出刺耳的白噪音。
+
+### ✅ 正确的终极测试命令 (获取完美数据)
+必须绕过所有的中间件，直通硬件 (`hw:0`)，并完全匹配硬件支持的最高采样格式（32-bit, 48000Hz）：
+```bash
+arecord -Dhw:0 -f S32_LE -r 48000 -c 2 -d 5 test.wav
 sox test.wav -n stat
 ```
+
 **测试数据表明**：
-- `Maximum amplitude` 达到了极度健康的 `0.999969`。
-- `RMS amplitude` 达到 `0.281164`。
-- 播放 `test.wav`，声音极其清晰，纯噪音彻底消失。至此，WM8960 Audio Board 在树莓派上的驱动冲突问题被彻底、完美地解决。
+- `Samples read` 精准为 `480000` (48000Hz * 5秒 * 2通道，毫无丢帧)。
+- `Maximum amplitude` 达到了完美的满幅 `1.000000`。
+- `RMS amplitude` 达到 `0.367895`。
+- 播放 `test.wav`，声音极其清晰饱满，纯噪音彻底消失。至此，WM8960 Audio Board 在树莓派上的驱动冲突问题被彻底、完美地解决。
