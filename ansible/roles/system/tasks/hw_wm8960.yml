@@ -5,15 +5,15 @@
     name: device-tree-compiler
     state: present
 
-- name: Copy custom WM8960 Audio Board DTS
+- name: Copy custom WM8960 Audio Card DTS
   ansible.builtin.copy:
-    src: wm8960-audio-board.dts
-    dest: /tmp/wm8960-audio-board.dts
+    src: wm8960-audio-card.dts
+    dest: /tmp/wm8960-audio-card.dts
 
-- name: Compile WM8960 Audio Board overlay
+- name: Compile WM8960 Audio Card overlay
   become: yes
   ansible.builtin.command:
-    cmd: dtc -@ -b 0 -Wno-unit_address_vs_reg -I dts -O dtb -o /boot/firmware/overlays/wm8960-audio-board.dtbo /tmp/wm8960-audio-board.dts
+    cmd: dtc -@ -b 0 -Wno-unit_address_vs_reg -I dts -O dtb -o /boot/firmware/overlays/wm8960-audio-card.dtbo /tmp/wm8960-audio-card.dts
   register: dtc_result
   changed_when: dtc_result.rc == 0
 
@@ -26,7 +26,7 @@
   loop:
     - "dtparam=i2s=on"
     - "dtparam=audio=off"
-    - "dtoverlay=wm8960-audio-board"
+    - "dtoverlay=wm8960-audio-card"
     - "dtoverlay=i2s-mmap"
   register: wm8960_boot_config
 
@@ -41,7 +41,7 @@
 - name: Reboot if WM8960 boot config changed
   become: yes
   ansible.builtin.reboot:
-    msg: "Rebooting to apply new WM8960 Audio Board device tree overlay"
+    msg: "Rebooting to apply new WM8960 Audio Card device tree overlay"
     connect_timeout: 5
     reboot_timeout: 600
     pre_reboot_delay: 0
@@ -54,9 +54,9 @@
 - name: Configure WM8960 amixer settings
   become: yes
   ansible.builtin.shell: |
-    amixer -c wm8960audioboar cset name='Left Boost Mixer LINPUT1 Switch' on
-    amixer -c wm8960audioboar cset name='Left Input Mixer Boost Switch' on
-    amixer -c wm8960audioboar cset name='Capture Switch' on
-    amixer -c wm8960audioboar cset name='Capture Volume' 63
-    amixer -c wm8960audioboar cset name='ADC PCM Capture Volume' 255
-    amixer -c wm8960audioboar cset name='ADC Data Output Select' 1
+    amixer -c wm8960audiocard cset name='Left Boost Mixer LINPUT1 Switch' on
+    amixer -c wm8960audiocard cset name='Left Input Mixer Boost Switch' on
+    amixer -c wm8960audiocard cset name='Capture Switch' on
+    amixer -c wm8960audiocard cset name='Capture Volume' 63
+    amixer -c wm8960audiocard cset name='ADC PCM Capture Volume' 255
+    amixer -c wm8960audiocard cset name='ADC Data Output Select' 1
