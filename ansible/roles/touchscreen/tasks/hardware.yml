@@ -1,4 +1,12 @@
 ---
+- name: Ensure touchscreen service is stopped before hardware test
+  ansible.builtin.systemd:
+    name: touchscreen.service
+    state: stopped
+    scope: user
+  become: no
+  ignore_errors: yes
+
 - name: Generate Touchscreen hardware test script
   ansible.builtin.template:
     src: ts_test.py.j2
