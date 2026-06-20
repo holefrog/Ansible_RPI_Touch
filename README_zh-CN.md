@@ -195,18 +195,15 @@ pinctrl get 13               # 期望看到 a0 和 PWM 字样
 
 通过 Linux 原生 `sysfs` 接口控制，避免 GPIO 库篡改引脚模式：
 
-    ```yaml
-    # ansible/roles/system/tasks/hw_wm8960.yml 部分节选
-    - name: Compile WM8960 Audio Card overlay
-      ansible.builtin.command:
-        cmd: dtc -@ -I dts -O dtb -o /boot/firmware/overlays/wm8960-audio-card.dtbo /tmp/wm8960-audio-card.dts
-      
-    - name: Configure WM8960 amixer settings
-      ansible.builtin.shell: |
-        amixer -c wm8960audiocard cset name='Left Boost Mixer LINPUT1 Switch' on
-        amixer -c wm8960audiocard cset name='Capture Switch' on
-        amixer -c wm8960audiocard cset name='ADC Data Output Select' 1
-    ```   > /sys/class/pwm/pwmchip0/pwm1/enable
+```bash
+echo 1 > /sys/class/pwm/pwmchip0/export
+sudo chmod 666 /sys/class/pwm/pwmchip0/pwm1/period \
+               /sys/class/pwm/pwmchip0/pwm1/duty_cycle \
+               /sys/class/pwm/pwmchip0/pwm1/enable
+echo 0       > /sys/class/pwm/pwmchip0/pwm1/duty_cycle   # 先清零
+echo 1000000 > /sys/class/pwm/pwmchip0/pwm1/period       # 1000Hz
+echo 1       > /sys/class/pwm/pwmchip0/pwm1/enable
+```
 
 ---
 
