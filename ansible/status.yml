@@ -22,6 +22,10 @@
         - squeezelite
         - shairport-sync
         - volume
+        - wyoming-porcupine1
+        - wyoming-whisper
+        - wyoming-piper
+        - wyoming-satellite
       environment:
         XDG_RUNTIME_DIR: "{{ mediaplayer_runtime_dir | default('/run/user/1000') }}"
       register: user_status

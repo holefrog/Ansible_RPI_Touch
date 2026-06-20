@@ -41,8 +41,17 @@ class InfoScreenRenderer(BaseUIRenderer):
             ("service_autopair", "BT Pair", "bluetooth-a2dp-autopair"),
             ("service_pipewire", "PipeWire", "pipewire"),
             ("service_wireplumber", "WirePlumber", "wireplumber"),
-            ("service_volume", "Volume", "volume")
+            ("service_volume", "Volume", "volume"),
+            ("service_wyoming", "Wyoming", "wyoming_all")
         ]
+
+        # 计算 Wyoming 综合状态
+        services_status["wyoming_all"] = (
+            services_status.get("wyoming-porcupine1", False) and
+            services_status.get("wyoming-whisper", False) and
+            services_status.get("wyoming-piper", False) and
+            services_status.get("wyoming-satellite", False)
+        )
 
         for i, (cfg_key, label, svc_key) in enumerate(service_configs):
             cfg = info_cfg.get(cfg_key, {})

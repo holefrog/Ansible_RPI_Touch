@@ -125,7 +125,11 @@ def get_services_status():
         "bluetooth-a2dp-autopair": ("system", "bluetooth-a2dp-autopair"),
         "pipewire": ("user", "pipewire"),
         "wireplumber": ("user", "wireplumber"),
-        "volume": ("user", "volume")
+        "volume": ("user", "volume"),
+        "wyoming-porcupine1": ("user", "wyoming-porcupine1"),
+        "wyoming-whisper": ("user", "wyoming-whisper"),
+        "wyoming-piper": ("user", "wyoming-piper"),
+        "wyoming-satellite": ("user", "wyoming-satellite")
     }
     
     status = {}
