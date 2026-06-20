@@ -72,21 +72,12 @@
     state: mounted
   ignore_errors: yes
 
-- name: Check if log2ram is installed
-  ansible.builtin.stat:
-    path: /usr/local/bin/log2ram
-  register: log2ram_check
-
-- name: Install log2ram to maximize performance by avoiding SD card log writes
+- name: Install log2ram via standard apt to maximize performance by avoiding SD card log writes
   become: yes
-  ansible.builtin.shell: |
-    wget https://github.com/azlux/log2ram/archive/master.tar.gz -O /tmp/log2ram.tar.gz
-    tar zxf /tmp/log2ram.tar.gz -C /tmp
-    cd /tmp/log2ram-master
-    chmod +x install.sh
-    ./install.sh
-    rm -rf /tmp/log2ram-master /tmp/log2ram.tar.gz
-  when: not log2ram_check.stat.exists
+  ansible.builtin.apt:
+    name: log2ram
+    state: present
+    update_cache: yes
 
 - name: Enable log2ram service
   become: yes
