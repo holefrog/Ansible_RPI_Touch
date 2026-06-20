@@ -6,7 +6,7 @@
 
 - name: Install wyoming-satellite
   ansible.builtin.pip:
-    name: "wyoming-satellite[webrtc]"
+    name: "wyoming-satellite"
     virtualenv: "{{ mediaplayer_home }}/wyoming/satellite"
     state: present
 

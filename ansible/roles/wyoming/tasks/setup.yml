@@ -8,6 +8,7 @@
       - portaudio19-dev
       - ffmpeg
       - espeak
+      - sox
     state: present
 
 - name: Create Wyoming base directory

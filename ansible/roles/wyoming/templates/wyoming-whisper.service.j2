@@ -5,9 +5,9 @@ After=network.target
 [Service]
 Type=simple
 ExecStart={{ mediaplayer_home }}/wyoming/whisper/bin/python3 -m wyoming_faster_whisper \
-    --model tiny \
+    --model base \
     --language zh \
-    --initial-prompt "以下是普通话句子。" \
+    --initial-prompt "请打开,卧室,左床头灯,右床头灯,客厅,灯,几点了,大点声,小点声,暂停,继续,播放,下一曲,上一曲" \
     --device cpu \
     --compute-type int8 \
     --uri tcp://0.0.0.0:10300 \
