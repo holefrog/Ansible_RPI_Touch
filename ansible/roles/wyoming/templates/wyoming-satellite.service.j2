@@ -11,11 +11,12 @@ ExecStart={{ mediaplayer_home }}/wyoming/satellite/bin/python3 -m wyoming_satell
     --snd-command "aplay -D default -r 22050 -c 1 -f S16_LE -t raw" \
     --wake-uri tcp://127.0.0.1:10400 \
     --wake-word-name bumblebee \
-    --detection-command "{{ mediaplayer_home }}/wyoming/satellite/awake.sh" \
-    --transcript-command "{{ mediaplayer_home }}/wyoming/satellite/transcript.sh" \
-    --tts-start-command "{{ mediaplayer_home }}/wyoming/satellite/tts-start.sh" \
-    --tts-stop-command "{{ mediaplayer_home }}/wyoming/satellite/done.sh" \
-    --error-command "{{ mediaplayer_home }}/wyoming/satellite/done.sh"
+    --detection-command {{ mediaplayer_home }}/wyoming/satellite/awake.sh \
+    --transcript-command {{ mediaplayer_home }}/wyoming/satellite/transcript.sh \
+    --tts-start-command {{ mediaplayer_home }}/wyoming/satellite/tts-start.sh \
+    --tts-stop-command {{ mediaplayer_home }}/wyoming/satellite/done.sh \
+    --error-command {{ mediaplayer_home }}/wyoming/satellite/done.sh \
+    --debug
 Restart=always
 RestartSec=3
 
