@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # resources/ts/state_manager.py
+# v2
 
 import time
 import threading
@@ -15,6 +16,16 @@ from state_handlers import (
 
 logger = logging.getLogger("StateManager")
 
+
+class VoiceSession:
+    """语音会话状态容器"""
+    def __init__(self):
+        self.history = []          # [{"user": str, "assistant": str, "state": str}]
+        self.voice_state = "idle"  # idle / listening / processing / speaking
+        self.transcript_text = ""
+        self.close_at = 0.0        # 非零时表示定时关闭，由 UIManager 消费
+
+
 class StateManager:
     """
     全局状态大管家：封装所有后台轮询线程和互斥锁。
@@ -24,22 +35,65 @@ class StateManager:
         self.pactl_env = pactl_env
         self.lms_params = lms_params
         self.touch_dev = touch_dev
-        
+
         # --- 触摸状态 ---
         self._touch_events = []  # 升级为事件队列，避免高速滑屏时丢失动作
         self._touch_lock = threading.Lock()
-        
+
         # --- 音频与系统状态 ---
         self._player_state = None
         self._system_info = {}
         self._services_status = {}
         self._app_state_lock = threading.Lock()
 
+        # --- 语音会话状态 ---
+        self._voice_session = VoiceSession()
+
     def start_background_threads(self):
         """一键启动所有后台数据采集线程"""
         threading.Thread(target=self._touch_poller, daemon=True).start()
         threading.Thread(target=self._audio_polling_thread, daemon=True).start()
         threading.Thread(target=self._info_polling_thread, daemon=True).start()
+
+    def advance_voice_state(self, event: dict) -> VoiceSession:
+        """
+        根据来自 AssistantListener 的事件推进语音会话状态。
+        由 main.py 主循环调用，返回最新的 VoiceSession 引用。
+        """
+        evt_type = event.get("event")
+        with self._app_state_lock:
+            s = self._voice_session
+
+            if evt_type == "awake":
+                s.voice_state = "listening"
+                s.transcript_text = ""
+                s.close_at = 0.0
+                s.history.append({"user": "", "assistant": "", "state": "listening"})
+
+            elif evt_type == "transcript":
+                s.voice_state = "processing"
+                s.transcript_text = event.get("text", "")
+                if s.history:
+                    s.history[-1]["user"] = s.transcript_text
+                    s.history[-1]["state"] = "processing"
+
+            elif evt_type == "tts-start":
+                s.voice_state = "speaking"
+                if s.history:
+                    s.history[-1]["state"] = "speaking"
+
+            elif evt_type in ("done", "timeout", "error"):
+                s.voice_state = "idle"
+                if s.history:
+                    s.history[-1]["state"] = "done"
+                s.close_at = time.time() + 4.0
+
+            return s
+
+    def get_voice_session(self) -> VoiceSession:
+        """安全获取当前语音会话状态"""
+        with self._app_state_lock:
+            return self._voice_session
 
     def get_touch_event(self):
         """安全的消费接口：获取并清空最新触摸事件"""
