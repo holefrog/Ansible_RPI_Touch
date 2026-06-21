@@ -283,8 +283,8 @@ class UIManager:
             if overlay == Overlay.VOLUME:
                 img = self.ui_volume.render(img, self.current_display_volume)
                 
-            if overlay == Overlay.ASSISTANT:
-                img = self.ui_assistant.render(img, self.voice_state, self.transcript_text)
+        if overlay == Overlay.ASSISTANT:
+            img = self.ui_assistant.render(img, self.voice_state, self.transcript_text)
 
         # ── SPI 发送（脏区差异刷新）────────────────────────────────────────
         if img:
