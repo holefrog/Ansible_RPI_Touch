@@ -198,6 +198,25 @@ def main():
             is_playing = player_state is not None and not player_state.is_clock
             current_signature = getattr(player_state, "signature", None) if player_state else None
 
+            # ── 检查语音助手超时兜底 ──────────────────────────────────────────
+            vs = state_mgr.get_voice_session()
+            if vs.voice_state != "idle" and vs.close_at > 0 and current_time >= vs.close_at:
+                timeout_session = state_mgr.advance_voice_state({"event": "timeout"})
+                ui_mgr.handle_action(
+                    {
+                        "type": "CLOSE_ASSISTANT",
+                        "voice_state": timeout_session.voice_state,
+                        "transcript": timeout_session.transcript_text,
+                        "history": timeout_session.history,
+                        "close_at": timeout_session.close_at,
+                    },
+                    current_time,
+                    player_state,
+                )
+                if was_playing_before_voice:
+                    input_ctrl.execute_player_cmd(player_state, "play")
+                    was_playing_before_voice = False
+
             # ── 弹窗超时处理 ──────────────────────────────────────────────────
             ui_mgr.update_timeouts(current_time)
 

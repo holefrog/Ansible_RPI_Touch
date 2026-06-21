@@ -67,18 +67,20 @@ class StateManager:
             if evt_type == "awake":
                 s.voice_state = "listening"
                 s.transcript_text = ""
-                s.close_at = 0.0
+                s.close_at = time.time() + 15.0  # 兜底超时时间
                 s.history.append({"user": "", "assistant": "", "state": "listening"})
 
             elif evt_type == "transcript":
                 s.voice_state = "processing"
                 s.transcript_text = event.get("text", "")
+                s.close_at = time.time() + 20.0  # 重置兜底超时
                 if s.history:
                     s.history[-1]["user"] = s.transcript_text
                     s.history[-1]["state"] = "processing"
 
             elif evt_type == "tts-start":
                 s.voice_state = "speaking"
+                s.close_at = time.time() + 60.0  # 播报语音可能会很久，给足时间
                 if s.history:
                     s.history[-1]["state"] = "speaking"
 
