@@ -113,7 +113,10 @@ def main():
     was_playing = False
     last_touch_time = 0.0
     last_player_signature = None
+    
+    # 语音助手状态隔离
     was_playing_before_voice = False
+    is_voice_session_active = False
 
     while True:
         try:
@@ -165,12 +168,14 @@ def main():
                 voice_session = state_mgr.advance_voice_state(ast_evt)
 
                 if evt_type == "awake":
-                    is_playing = (player_state is not None
-                                  and not getattr(player_state, "is_paused", True)
-                                  and not player_state.is_clock)
-                    was_playing_before_voice = is_playing
-                    if is_playing:
-                        input_ctrl.execute_player_cmd(player_state, "pause")
+                    if not is_voice_session_active:
+                        is_playing_now = (player_state is not None
+                                      and not getattr(player_state, "is_paused", True)
+                                      and not player_state.is_clock)
+                        was_playing_before_voice = is_playing_now
+                        is_voice_session_active = True
+                        if is_playing_now:
+                            input_ctrl.execute_player_cmd(player_state, "pause")
 
                 if evt_type in ("done", "timeout", "error"):
                     action_type = "CLOSE_ASSISTANT"
@@ -190,9 +195,11 @@ def main():
                 )
 
                 if evt_type in ("done", "timeout", "error"):
-                    if was_playing_before_voice:
-                        input_ctrl.execute_player_cmd(player_state, "play")
-                        was_playing_before_voice = False
+                    if is_voice_session_active:
+                        if was_playing_before_voice:
+                            input_ctrl.execute_player_cmd(player_state, "play")
+                            was_playing_before_voice = False
+                        is_voice_session_active = False
 
             # ── 播放状态判断 ──────────────────────────────────────────────────
             is_playing = player_state is not None and not player_state.is_clock
@@ -213,9 +220,11 @@ def main():
                     current_time,
                     player_state,
                 )
-                if was_playing_before_voice:
-                    input_ctrl.execute_player_cmd(player_state, "play")
-                    was_playing_before_voice = False
+                if is_voice_session_active:
+                    if was_playing_before_voice:
+                        input_ctrl.execute_player_cmd(player_state, "play")
+                        was_playing_before_voice = False
+                    is_voice_session_active = False
 
             # ── 弹窗超时处理 ──────────────────────────────────────────────────
             ui_mgr.update_timeouts(current_time)
