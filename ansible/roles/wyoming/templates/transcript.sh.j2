@@ -4,15 +4,19 @@ python3 -c '
 import sys, json, socket
 try:
     raw = sys.stdin.read().strip()
+    print(f"[Wyoming Event] transcript raw: {raw}", file=sys.stderr)
     try:
         parsed = json.loads(raw)
         text = parsed.get("data", {}).get("text", "") if isinstance(parsed, dict) and "data" in parsed else (parsed.get("text", raw) if isinstance(parsed, dict) else raw)
-    except Exception:
+    except Exception as e:
+        print(f"[Wyoming Event] json parse fallback to raw ({e})", file=sys.stderr)
         text = raw
-except Exception:
+except Exception as e:
+    print(f"[Wyoming Event] stdin error: {e}", file=sys.stderr)
     text = ""
 
-payload = json.dumps({"event": "transcript", "text": text}).encode("utf-8")
+payload = json.dumps({"event": "transcript", "text": text})
+print(f"[Wyoming Event] sending UDP: {payload}", file=sys.stderr)
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.sendto(payload, ("127.0.0.1", 10701))
+sock.sendto(payload.encode("utf-8"), ("127.0.0.1", 10701))
 '

@@ -1,3 +1,4 @@
 #!/bin/bash
 # 结束监听界面的 UDP 包，使用 Python 避免 nc 命令的阻塞卡死
+echo "[Wyoming Event] done triggered" >&2
 python3 -c 'import socket; socket.socket(socket.AF_INET, socket.SOCK_DGRAM).sendto(b"{\"event\": \"done\"}", ("127.0.0.1", 10701))'
