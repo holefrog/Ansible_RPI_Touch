@@ -200,6 +200,10 @@ class AssistantScreenRenderer(BaseUIRenderer):
             return (asst_text or "正在回答...", self.C_SPEAKING)
         if turn_state == "done":
             return (asst_text or "✓ 已回答", self.C_TEXT_GRAY)
+        if turn_state == "timeout":
+            return ("⚠ 连接超时", self.C_TEXT_GRAY)
+        if turn_state == "error":
+            return ("✖ 出现错误", self.C_TEXT_GRAY)
         return ("", self.C_TEXT_GRAY)
 
     def _status_label(self, state):
