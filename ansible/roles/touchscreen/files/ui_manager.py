@@ -166,33 +166,18 @@ class UIManager:
             self.overlay_timer = current_time
 
         elif act_type == "SHOW_ASSISTANT":
-            state = action.get("state", "listening")
-            text  = action.get("text", "")
-
-            self.active_overlay  = Overlay.ASSISTANT
-            self.voice_state     = state
-            self.transcript_text = text
-            self.overlay_timer   = current_time
-            self.assistant_close_at = 0.0  # 取消任何待关闭计时
-
-            if state == "listening":
-                # 每次唤醒开启新一轮对话
-                self.conversation_history.append(
-                    {"user": "", "assistant": "", "state": "listening"}
-                )
-            elif state == "processing" and self.conversation_history:
-                self.conversation_history[-1]["user"]  = text
-                self.conversation_history[-1]["state"] = "processing"
-            elif state == "speaking" and self.conversation_history:
-                self.conversation_history[-1]["state"] = "speaking"
+            self.active_overlay      = Overlay.ASSISTANT
+            self.voice_state         = action.get("voice_state", "idle")
+            self.transcript_text     = action.get("transcript", "")
+            self.conversation_history = action.get("history", [])
+            self.overlay_timer       = current_time
+            self.assistant_close_at  = action.get("close_at", 0.0)
 
         elif act_type == "CLOSE_ASSISTANT":
-            if self.active_overlay == Overlay.ASSISTANT:
-                # 标记最后一轮为 done，延迟 4 秒关闭让用户看完对话
-                if self.conversation_history:
-                    self.conversation_history[-1]["state"] = "done"
-                self.voice_state = "idle"
-                self.assistant_close_at = current_time + 4.0
+            self.active_overlay      = Overlay.ASSISTANT  # 保持显示，等 close_at 超时
+            self.voice_state         = "idle"
+            self.conversation_history = action.get("history", [])
+            self.assistant_close_at  = action.get("close_at", 0.0)
 
     def dismiss_screens_on_play(self):
         """当从空闲切入播放状态时，清理所有浮层"""
