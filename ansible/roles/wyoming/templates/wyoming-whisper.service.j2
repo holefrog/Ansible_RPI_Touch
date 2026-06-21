@@ -10,8 +10,6 @@ ExecStart={{ mediaplayer_home }}/wyoming/whisper/bin/python3 -m wyoming_faster_w
     --initial-prompt "{{ whisper_initial_prompt | default('') }}" \
     --device cpu \
     --compute-type int8 \
-    --beam-size 1 \
-    --local-files-only \
     --uri tcp://0.0.0.0:10300 \
     --data-dir {{ mediaplayer_home }}/wyoming/whisper/data
 Restart=always
