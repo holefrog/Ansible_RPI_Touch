@@ -79,6 +79,11 @@ class UIManager:
         self.voice_state = "idle"
         self.transcript_text = ""
 
+        # 10. 对话历史（每次 awake-done 为一轮）
+        # [{"user": str, "assistant": str, "state": str}, ...]
+        self.conversation_history = []
+        self.assistant_close_at   = 0.0   # 非零时表示定时关闭
+
     # ── 对外接口：供 InputController 查询当前 UI 状态 ──────────────────────
 
     def get_ui_state_dict(self, player_state=None):
@@ -161,16 +166,33 @@ class UIManager:
             self.overlay_timer = current_time
 
         elif act_type == "SHOW_ASSISTANT":
-            self.active_overlay = Overlay.ASSISTANT
-            self.voice_state = action.get("state", "listening")
-            self.transcript_text = action.get("text", "")
-            self.overlay_timer = current_time
+            state = action.get("state", "listening")
+            text  = action.get("text", "")
+
+            self.active_overlay  = Overlay.ASSISTANT
+            self.voice_state     = state
+            self.transcript_text = text
+            self.overlay_timer   = current_time
+            self.assistant_close_at = 0.0  # 取消任何待关闭计时
+
+            if state == "listening":
+                # 每次唤醒开启新一轮对话
+                self.conversation_history.append(
+                    {"user": "", "assistant": "", "state": "listening"}
+                )
+            elif state == "processing" and self.conversation_history:
+                self.conversation_history[-1]["user"]  = text
+                self.conversation_history[-1]["state"] = "processing"
+            elif state == "speaking" and self.conversation_history:
+                self.conversation_history[-1]["state"] = "speaking"
 
         elif act_type == "CLOSE_ASSISTANT":
             if self.active_overlay == Overlay.ASSISTANT:
-                self.active_overlay = Overlay.NONE
+                # 标记最后一轮为 done，延迟 4 秒关闭让用户看完对话
+                if self.conversation_history:
+                    self.conversation_history[-1]["state"] = "done"
                 self.voice_state = "idle"
-                self.transcript_text = ""
+                self.assistant_close_at = current_time + 4.0
 
     def dismiss_screens_on_play(self):
         """当从空闲切入播放状态时，清理所有浮层"""
@@ -197,6 +219,14 @@ class UIManager:
         elif self.active_overlay == Overlay.VOLUME:
             if current_time - self.overlay_timer >= self.popup_duration:
                 self.active_overlay = Overlay.NONE
+
+        elif self.active_overlay == Overlay.ASSISTANT:
+            if self.assistant_close_at > 0 and current_time >= self.assistant_close_at:
+                self.active_overlay = Overlay.NONE
+                self.voice_state    = "idle"
+                self.transcript_text = ""
+                self.conversation_history = []
+                self.assistant_close_at   = 0.0
 
         # 按钮高亮短暂显示后清除
         if self.active_button and (current_time - self.active_button_timer >= 0.2):
@@ -284,7 +314,10 @@ class UIManager:
                 img = self.ui_volume.render(img, self.current_display_volume)
                 
         if overlay == Overlay.ASSISTANT:
-            img = self.ui_assistant.render(img, self.voice_state, self.transcript_text)
+            img = self.ui_assistant.render(
+                img, self.voice_state, self.transcript_text,
+                self.conversation_history
+            )
 
         # ── SPI 发送（脏区差异刷新）────────────────────────────────────────
         if img:
