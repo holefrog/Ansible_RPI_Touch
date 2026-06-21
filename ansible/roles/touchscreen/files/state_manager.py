@@ -80,6 +80,13 @@ class StateManager:
                     s.transcript_text = ""
                     s.close_at = time.time() + 15.0  # 兜底超时时间
                     s.history.append({"user": "", "assistant": "", "state": "listening"})
+            elif evt_type == "synthesize":
+                if s.history:
+                    text = evt_data.get("text", "").strip()
+                    if text.startswith('"') and text.endswith('"'):
+                        text = text[1:-1]
+                    s.history[-1]["assistant"] = text.replace('\\n', ' ').strip()
+                    s.voice_state = "speaking"
 
             elif evt_type == "transcript":
                 s.voice_state = "processing"

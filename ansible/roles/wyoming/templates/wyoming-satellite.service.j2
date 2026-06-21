@@ -13,6 +13,7 @@ ExecStart={{ mediaplayer_home }}/wyoming/satellite/bin/python3 -m wyoming_satell
     --wake-word-name bumblebee \
     --detection-command {{ mediaplayer_home }}/wyoming/satellite/awake.sh \
     --transcript-command {{ mediaplayer_home }}/wyoming/satellite/transcript.sh \
+    --synthesize-command {{ mediaplayer_home }}/wyoming/satellite/synthesize.sh \
     --tts-start-command {{ mediaplayer_home }}/wyoming/satellite/tts-start.sh \
     --tts-stop-command {{ mediaplayer_home }}/wyoming/satellite/done.sh \
     --error-command {{ mediaplayer_home }}/wyoming/satellite/done.sh \

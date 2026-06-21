@@ -16,6 +16,7 @@
     - done.sh
     - transcript.sh
     - tts-start.sh
+    - synthesize.sh
 
 - name: Deploy wyoming-satellite.service
   ansible.builtin.template:

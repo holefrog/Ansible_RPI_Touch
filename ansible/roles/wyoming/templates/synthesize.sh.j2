@@ -1,0 +1,6 @@
+#!/bin/bash
+# Read synthesize text from standard input
+TEXT=$(cat)
+# Send text to the touchscreen socket
+TEXT_ESCAPED=$(echo "$TEXT" | jq -R -s -c . | sed 's/^"\(.*\)"$/\1/')
+echo "{\"event\": \"synthesize\", \"text\": \"$TEXT_ESCAPED\"}" | socat - UDP4:127.0.0.1:10701
