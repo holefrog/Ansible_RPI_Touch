@@ -241,15 +241,16 @@ class AssistantScreenRenderer(BaseUIRenderer):
                   icon_char, font=icon_font, fill=color)
 
     def _wrap(self, text, font, max_w, draw):
-        words, lines, cur = text.split(), [], ""
-        for w in words:
-            test = (cur + " " + w).strip()
+        lines, cur = [], ""
+        # 遍历每个字符，完美支持中文这种没有空格的语言
+        for char in text:
+            test = cur + char
             if draw.textlength(test, font=font) <= max_w:
                 cur = test
             else:
                 if cur:
                     lines.append(cur)
-                cur = w
+                cur = char
         if cur:
             lines.append(cur)
         return lines or [text]
