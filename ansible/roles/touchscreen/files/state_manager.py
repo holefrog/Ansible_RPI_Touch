@@ -24,6 +24,10 @@ class VoiceSession:
         self.voice_state = "idle"  # idle / listening / processing / speaking
         self.transcript_text = ""
         self.close_at = 0.0        # 非零时表示定时关闭，由 UIManager 消费
+        
+        # 跨域状态记录：由 StateManager 内部全权维护
+        self.is_active = False
+        self.was_playing_before_voice = False
 
 
 class StateManager:
@@ -65,10 +69,17 @@ class StateManager:
             s = self._voice_session
 
             if evt_type == "awake":
-                s.voice_state = "listening"
-                s.transcript_text = ""
-                s.close_at = time.time() + 15.0  # 兜底超时时间
-                s.history.append({"user": "", "assistant": "", "state": "listening"})
+                if not s.is_active:
+                    s.is_active = True
+                    # 自动读取内部的 _player_state 记录现场
+                    is_playing = (self._player_state is not None
+                                  and not getattr(self._player_state, "is_paused", True)
+                                  and not getattr(self._player_state, "is_clock", False))
+                    s.was_playing_before_voice = is_playing
+                    s.voice_state = "listening"
+                    s.transcript_text = ""
+                    s.close_at = time.time() + 15.0  # 兜底超时时间
+                    s.history.append({"user": "", "assistant": "", "state": "listening"})
 
             elif evt_type == "transcript":
                 s.voice_state = "processing"
@@ -86,6 +97,7 @@ class StateManager:
 
             elif evt_type in ("done", "timeout", "error"):
                 s.voice_state = "idle"
+                s.is_active = False  # 状态机完全复位
                 if s.history:
                     s.history[-1]["state"] = "done"
                 s.close_at = time.time() + 4.0

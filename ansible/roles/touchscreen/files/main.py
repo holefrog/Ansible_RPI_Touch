@@ -113,10 +113,6 @@ def main():
     was_playing = False
     last_touch_time = 0.0
     last_player_signature = None
-    
-    # 语音助手状态隔离
-    was_playing_before_voice = False
-    is_voice_session_active = False
 
     while True:
         try:
@@ -165,15 +161,15 @@ def main():
                 screen_saver.wake()
                 evt_type = ast_evt.get("event")
 
+                # 让 state_manager 全权处理跨域状态逻辑
                 voice_session = state_mgr.advance_voice_state(ast_evt)
 
+                # main 只负责消费：如果是新发起的唤醒，且原先在播放，则暂停
                 if evt_type == "awake":
-                    if not is_voice_session_active:
+                    if voice_session.is_active and voice_session.was_playing_before_voice:
                         is_playing_now = (player_state is not None
                                       and not getattr(player_state, "is_paused", True)
-                                      and not player_state.is_clock)
-                        was_playing_before_voice = is_playing_now
-                        is_voice_session_active = True
+                                      and not getattr(player_state, "is_clock", False))
                         if is_playing_now:
                             input_ctrl.execute_player_cmd(player_state, "pause")
 
@@ -194,15 +190,13 @@ def main():
                     player_state,
                 )
 
+                # 消费完毕：如果是结束状态，且原先在播放，则恢复播放
                 if evt_type in ("done", "timeout", "error"):
-                    if is_voice_session_active:
-                        if was_playing_before_voice:
-                            input_ctrl.execute_player_cmd(player_state, "play")
-                            was_playing_before_voice = False
-                        is_voice_session_active = False
+                    if voice_session.was_playing_before_voice:
+                        input_ctrl.execute_player_cmd(player_state, "play")
 
             # ── 播放状态判断 ──────────────────────────────────────────────────
-            is_playing = player_state is not None and not player_state.is_clock
+            is_playing = player_state is not None and not getattr(player_state, "is_clock", False)
             current_signature = getattr(player_state, "signature", None) if player_state else None
 
             # ── 检查语音助手超时兜底 ──────────────────────────────────────────
@@ -220,11 +214,8 @@ def main():
                     current_time,
                     player_state,
                 )
-                if is_voice_session_active:
-                    if was_playing_before_voice:
-                        input_ctrl.execute_player_cmd(player_state, "play")
-                        was_playing_before_voice = False
-                    is_voice_session_active = False
+                if timeout_session.was_playing_before_voice:
+                    input_ctrl.execute_player_cmd(player_state, "play")
 
             # ── 弹窗超时处理 ──────────────────────────────────────────────────
             ui_mgr.update_timeouts(current_time)
