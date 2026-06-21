@@ -4,9 +4,11 @@ python3 -c '
 import sys, json, socket
 try:
     raw = sys.stdin.read().strip()
-    parsed = json.loads(raw)
-    # 提取 Wyoming 事件中的 text，通常在 {"data": {"text": "..."}}
-    text = parsed.get("data", {}).get("text", "") if "data" in parsed else parsed.get("text", raw)
+    try:
+        parsed = json.loads(raw)
+        text = parsed.get("data", {}).get("text", "") if isinstance(parsed, dict) and "data" in parsed else (parsed.get("text", raw) if isinstance(parsed, dict) else raw)
+    except Exception:
+        text = raw
 except Exception:
     text = ""
 
