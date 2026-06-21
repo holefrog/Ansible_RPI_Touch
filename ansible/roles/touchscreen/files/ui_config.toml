@@ -304,3 +304,53 @@ show_status_bar = false  # 隐藏全局状态栏
     font_size = 46               # 字体稍微缩小以安全适配屏幕高度
     color = "#B3B3B3"            # 更亮一些的高级灰
     glow_color = "#000000"     # 黑色外阴影融入背景
+
+# ==========================================
+# 7. 语音助手屏幕 (Voice Assistant)
+# ==========================================
+[screens.assistant]
+bg_color        = "#080A12"     # 主背景
+header_bg_color = "#101424"     # 标题/尾栏背景
+divider_color   = "#23293D"     # 分隔线颜色
+header_height   = 46            # 标题栏高度 px
+footer_height   = 44            # 底部状态栏高度 px
+bubble_padding  = 9             # 气泡内边距 px
+bubble_radius   = 11            # 气泡圆角半径 px
+bubble_line_gap = 6             # 气泡行间额外间距 px
+bubble_gap      = 8             # 气泡之间的间距 px
+margin          = 12            # 左右外边距 px
+max_turns       = 5             # 最多显示几轮对话
+
+    [screens.assistant.title]
+    text      = "Voice Assistant"
+    font_size = 17
+    color     = "#EBF0FA"
+
+    [screens.assistant.dot]
+    radius = 6                  # 状态指示点半径 px
+
+    [screens.assistant.user_bubble]
+    bg_color   = "#285ABE"      # 用户气泡背景（蓝色）
+    text_color = "#EBF0FA"
+    font_size  = 16
+
+    [screens.assistant.asst_bubble]
+    bg_color  = "#1A2032"       # 助手气泡背景（深色）
+    font_size = 14
+
+    [screens.assistant.status]
+    font_size = 14
+
+    [screens.assistant.colors]
+    listening  = "#32D270"      # 聆听中（绿）
+    speaking   = "#FFA532"      # 回答中（橙）
+    processing = "#A578FF"      # 处理中（紫）
+    idle       = "#828596"      # 待机（灰）
+    text_white = "#EBF0FA"
+    text_gray  = "#828596"
+    accent     = "#64B4FF"      # 处理中气泡文字（蓝）
+
+    [screens.assistant.mic]
+    icon_size  = 72             # 麦克风图标字号
+    icon_char  = "\ue029"       # Material Icons: mic
+    glow_divider = 5            # 光晕亮度 = color / this
