@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 ExecStart={{ mediaplayer_home }}/wyoming/whisper/bin/python3 -m wyoming_faster_whisper \
-    --model base \
+    --model tiny \
     --language zh \
     --initial-prompt "{{ whisper_initial_prompt | default('') }}" \
     --device cpu \
