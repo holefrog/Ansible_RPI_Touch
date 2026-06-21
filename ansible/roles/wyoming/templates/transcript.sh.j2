@@ -3,7 +3,7 @@
 python3 -c '
 import sys, json, socket
 try:
-    raw = sys.stdin.read().strip()
+    raw = sys.stdin.readline().strip()
     print(f"[Wyoming Event] transcript raw: {raw}", file=sys.stderr)
     try:
         parsed = json.loads(raw)
