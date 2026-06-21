@@ -1,7 +1,15 @@
 #!/bin/bash
+# 处理 Wyoming 协议的标准输入并转化为 UI 事件
 python3 -c '
 import sys, json, socket
-text = sys.stdin.read().strip()
+try:
+    raw = sys.stdin.read().strip()
+    parsed = json.loads(raw)
+    # 提取 Wyoming 事件中的 text，通常在 {"data": {"text": "..."}}
+    text = parsed.get("data", {}).get("text", "") if "data" in parsed else parsed.get("text", raw)
+except Exception:
+    text = ""
+
 payload = json.dumps({"event": "transcript", "text": text}).encode("utf-8")
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.sendto(payload, ("127.0.0.1", 10701))
