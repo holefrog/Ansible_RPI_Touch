@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # resources/ts/main.py
-# v4
+# v5
 
 import time
 import sys
@@ -158,28 +158,38 @@ def main():
                 ast_evt = assistant_listener.get_event()
                 if not ast_evt:
                     break
-                    
+
                 screen_saver.wake()
                 evt_type = ast_evt.get("event")
-                
+
+                voice_session = state_mgr.advance_voice_state(ast_evt)
+
                 if evt_type == "awake":
-                    # 记录被打断前的播放状态
-                    is_playing = player_state is not None and not getattr(player_state, "is_paused", True) and not player_state.is_clock
+                    is_playing = (player_state is not None
+                                  and not getattr(player_state, "is_paused", True)
+                                  and not player_state.is_clock)
                     was_playing_before_voice = is_playing
                     if is_playing:
                         input_ctrl.execute_player_cmd(player_state, "pause")
-                        
-                    ui_mgr.handle_action({"type": "SHOW_ASSISTANT", "state": "listening"}, current_time, player_state)
-                    
-                elif evt_type == "transcript":
-                    text = ast_evt.get("text", "")
-                    ui_mgr.handle_action({"type": "SHOW_ASSISTANT", "state": "processing", "text": text}, current_time, player_state)
-                    
-                elif evt_type == "tts-start":
-                    ui_mgr.handle_action({"type": "SHOW_ASSISTANT", "state": "speaking", "text": ui_mgr.transcript_text}, current_time, player_state)
-                    
-                elif evt_type in ("done", "timeout", "error"):
-                    ui_mgr.handle_action({"type": "CLOSE_ASSISTANT"}, current_time, player_state)
+
+                if evt_type in ("done", "timeout", "error"):
+                    action_type = "CLOSE_ASSISTANT"
+                else:
+                    action_type = "SHOW_ASSISTANT"
+
+                ui_mgr.handle_action(
+                    {
+                        "type": action_type,
+                        "voice_state": voice_session.voice_state,
+                        "transcript": voice_session.transcript_text,
+                        "history": voice_session.history,
+                        "close_at": voice_session.close_at,
+                    },
+                    current_time,
+                    player_state,
+                )
+
+                if evt_type in ("done", "timeout", "error"):
                     if was_playing_before_voice:
                         input_ctrl.execute_player_cmd(player_state, "play")
                         was_playing_before_voice = False
@@ -236,7 +246,7 @@ def main():
     try:
         if 'assistant_listener' in locals():
             assistant_listener.stop()
-            
+
         from PIL import Image
         if 'display_ctx' in locals() and 'device' in display_ctx:
             display_ctx['device'].show_image(
