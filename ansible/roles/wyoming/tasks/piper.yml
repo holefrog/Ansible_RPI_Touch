@@ -4,6 +4,7 @@
       - wyoming-piper
       - audioop-lts
       - g2pw
+      - requests
     virtualenv: "{{ mediaplayer_home }}/wyoming/piper"
     virtualenv_command: "python3 -m venv"
     state: present
