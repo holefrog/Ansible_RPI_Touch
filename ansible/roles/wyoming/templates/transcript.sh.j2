@@ -1,7 +1,8 @@
 #!/bin/bash
-# 处理 Wyoming 协议的标准输入并转化为 UI 事件
+# 处理 Wyoming 协议的标准输入并转化为 UI 事件，并处理本地意图（如查时间）
 python3 -c '
-import sys, json, socket
+import sys, json, socket, datetime, subprocess
+
 try:
     raw = sys.stdin.readline().strip()
     print(f"[Wyoming Event] transcript raw: {raw}", file=sys.stderr)
@@ -19,4 +20,18 @@ payload = json.dumps({"event": "transcript", "text": text})
 print(f"[Wyoming Event] sending UDP: {payload}", file=sys.stderr)
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.sendto(payload.encode("utf-8"), ("127.0.0.1", 10701))
+
+# 本地处理“现在几点了”意图
+if "几点" in text or "时间" in text:
+    now = datetime.datetime.now()
+    time_str = now.strftime("当前时间是 %H点%M分")
+    print(f"[Local Intent] Handling time query: {time_str}", file=sys.stderr)
+    
+    # 将合成文本发送给 UI 显示
+    syn_payload = json.dumps({"event": "synthesize", "text": time_str})
+    sock.sendto(syn_payload.encode("utf-8"), ("127.0.0.1", 10701))
+    
+    # 异步调用本地 Piper 生成语音并播放
+    cmd = f'\''echo "{time_str}" | {{ mediaplayer_home }}/wyoming/piper/bin/piper --model {{ mediaplayer_home }}/wyoming/piper/data/zh_CN-huayan-medium.onnx --output_raw | aplay -D default -r 22050 -c 1 -f S16_LE -t raw &'\''
+    subprocess.Popen(cmd, shell=True)
 '
