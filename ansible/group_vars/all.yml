@@ -16,4 +16,4 @@ mediaplayer_runtime_dir: "/run/user/{{ ansible_facts['user_uid'] }}"
 system_timezone: "America/Vancouver"
 
 # Wyoming Voice Assistant Configuration
-whisper_initial_prompt: "开，打开，关，关上，关闭。打开客厅灯。关闭客厅灯。现在几点了？大点声，小点声，暂停，继续播放，下一首，上一首。"
+whisper_initial_prompt: "开，打开，关，关上，关闭，客厅灯，小米台灯，现在几点了，大点声，小点声，暂停，继续播放，下一首，上一首。"
