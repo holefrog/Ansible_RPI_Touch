@@ -5,6 +5,7 @@
       - audioop-lts
       - g2pw
       - requests
+      - unicode-rbnf
     virtualenv: "{{ mediaplayer_home }}/wyoming/piper"
     virtualenv_command: "python3 -m venv"
     state: present
