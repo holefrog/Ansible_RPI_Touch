@@ -1,19 +1,49 @@
-- name: Install wyoming-piper
+# ansible/roles/wyoming/tasks/piper.yml  v2
+# 替换 wyoming-piper 为 sherpa-onnx TTS server
+
+- name: Install sherpa-onnx TTS dependencies
   ansible.builtin.pip:
     name:
-      - wyoming-piper
-      - audioop-lts
-      - g2pw
-      - requests
-      - unicode-rbnf
-    virtualenv: "{{ mediaplayer_home }}/wyoming/piper"
+      - sherpa-onnx
+      - wyoming
+      - numpy
+    virtualenv: "{{ mediaplayer_home }}/wyoming/sherpa-tts"
     virtualenv_command: "python3 -m venv"
     state: present
 
-- name: Ensure Piper data directory exists
+- name: Create TTS model directory
   ansible.builtin.file:
-    path: "{{ mediaplayer_home }}/wyoming/piper/data"
+    path: "{{ mediaplayer_home }}/wyoming/sherpa-tts/model"
     state: directory
+    mode: '0755'
+
+- name: Download matcha-icefall-zh-baker model
+  ansible.builtin.get_url:
+    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-zh-baker.tar.bz2"
+    dest: "/tmp/matcha-zh-baker.tar.bz2"
+    mode: '0644'
+  register: tts_model_download
+
+- name: Download vocos vocoder
+  ansible.builtin.get_url:
+    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx"
+    dest: "{{ mediaplayer_home }}/wyoming/sherpa-tts/model/vocos-22khz-univ.onnx"
+    mode: '0644'
+
+- name: Extract matcha model
+  ansible.builtin.unarchive:
+    src: "/tmp/matcha-zh-baker.tar.bz2"
+    dest: "{{ mediaplayer_home }}/wyoming/sherpa-tts/model"
+    remote_src: yes
+    extra_opts: ["--strip-components=1"]
+  when: tts_model_download.changed
+
+- name: Deploy sherpa_tts_server.py
+  ansible.builtin.copy:
+    src: sherpa_tts_server.py
+    dest: "{{ mediaplayer_home }}/wyoming/sherpa-tts/sherpa_tts_server.py"
+    mode: '0644'
+  notify: restart wyoming-piper
 
 - name: Deploy wyoming-piper.service
   ansible.builtin.template:

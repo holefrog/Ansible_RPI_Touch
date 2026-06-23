@@ -1,13 +1,12 @@
+# ansible/roles/wyoming/templates/wyoming-piper.service.j2  v2
 [Unit]
-Description=Wyoming Piper (TTS)
+Description=Wyoming TTS (sherpa-onnx matcha-zh-baker)
 After=network.target
 
 [Service]
 Type=simple
-ExecStart={{ mediaplayer_home }}/wyoming/piper/bin/python3 -m wyoming_piper \
-    --voice zh_CN-huayan-medium \
-    --uri tcp://0.0.0.0:10200 \
-    --data-dir {{ mediaplayer_home }}/wyoming/piper/data
+ExecStart={{ mediaplayer_home }}/wyoming/sherpa-tts/bin/python3 \
+    {{ mediaplayer_home }}/wyoming/sherpa-tts/sherpa_tts_server.py
 Restart=always
 RestartSec=3
 StandardOutput=journal
