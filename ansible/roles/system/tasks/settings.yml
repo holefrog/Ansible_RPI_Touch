@@ -115,3 +115,12 @@
     - { key: 'vm.vfs_cache_pressure', value: '50' }
     - { key: 'vm.dirty_ratio', value: '20' }
     - { key: 'vm.dirty_background_ratio', value: '10' }
+
+- name: Disable Wi-Fi power management in NetworkManager to prevent ARP drops
+  become: yes
+  ansible.builtin.copy:
+    dest: /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf
+    content: |
+      [connection]
+      wifi.powersave = 2
+    mode: '0644'

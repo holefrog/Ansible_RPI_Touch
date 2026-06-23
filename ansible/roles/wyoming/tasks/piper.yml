@@ -24,19 +24,19 @@
     mode: '0644'
   register: tts_model_download
 
-- name: Download vocos vocoder
-  ansible.builtin.get_url:
-    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx"
-    dest: "{{ mediaplayer_home }}/wyoming/sherpa-tts/model/vocos-22khz-univ.onnx"
-    mode: '0644'
-
 - name: Extract matcha model
   ansible.builtin.unarchive:
     src: "/tmp/matcha-zh-baker.tar.bz2"
     dest: "{{ mediaplayer_home }}/wyoming/sherpa-tts/model"
     remote_src: yes
     extra_opts: ["--strip-components=1"]
-  when: tts_model_download.changed
+    creates: "{{ mediaplayer_home }}/wyoming/sherpa-tts/model/model-steps-3.onnx"
+
+- name: Download vocos vocoder
+  ansible.builtin.get_url:
+    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx"
+    dest: "{{ mediaplayer_home }}/wyoming/sherpa-tts/model/vocos-22khz-univ.onnx"
+    mode: '0644'
 
 - name: Deploy sherpa_tts_server.py
   ansible.builtin.copy:

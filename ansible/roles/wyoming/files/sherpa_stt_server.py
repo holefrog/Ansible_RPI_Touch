@@ -2,6 +2,7 @@
 # Wyoming STT server using sherpa-onnx SenseVoice
 # Replaces wyoming-faster-whisper on port 10300
 
+import argparse
 import asyncio
 import logging
 import numpy as np
@@ -13,8 +14,13 @@ from wyoming.info import AsrModel, AsrProgram, Attribution, Describe, Info
 
 logger = logging.getLogger(__name__)
 
-MODEL_DIR = "/home/player/wyoming/sherpa-stt/model"
-PORT = 10300
+parser = argparse.ArgumentParser()
+parser.add_argument("--model-dir", required=True, help="Path to model directory")
+parser.add_argument("--port", type=int, default=10300, help="Port to listen on")
+args = parser.parse_args()
+
+MODEL_DIR = args.model_dir
+PORT = args.port
 
 # 进程级共享，线程安全
 recognizer = sherpa_onnx.OfflineRecognizer.from_sense_voice(
@@ -74,7 +80,11 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     audio = np.concatenate(audio_buffer)
                     stream = recognizer.create_stream()
                     stream.accept_waveform(16000, audio)
-                    recognizer.decode_stream(stream)
+                    
+                    # 在线程池跑推理，不阻塞事件循环
+                    loop = asyncio.get_running_loop()
+                    await loop.run_in_executor(None, recognizer.decode_stream, stream)
+                    
                     text = stream.result.text.strip()
                     logger.info("Transcript: %r", text)
                 else:

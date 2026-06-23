@@ -6,7 +6,8 @@ After=network.target
 [Service]
 Type=simple
 ExecStart={{ mediaplayer_home }}/wyoming/sherpa-tts/bin/python3 \
-    {{ mediaplayer_home }}/wyoming/sherpa-tts/sherpa_tts_server.py
+    {{ mediaplayer_home }}/wyoming/sherpa-tts/sherpa_tts_server.py \
+    --model-dir {{ mediaplayer_home }}/wyoming/sherpa-tts/model
 Restart=always
 RestartSec=3
 StandardOutput=journal

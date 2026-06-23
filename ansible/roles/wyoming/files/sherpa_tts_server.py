@@ -2,6 +2,7 @@
 # Wyoming TTS server using sherpa-onnx matcha-icefall-zh-baker
 # Replaces wyoming-piper on port 10200
 
+import argparse
 import asyncio
 import logging
 import numpy as np
@@ -13,8 +14,13 @@ from wyoming.info import Attribution, Describe, Info, TtsModel, TtsProgram, TtsV
 
 logger = logging.getLogger(__name__)
 
-MODEL_DIR = "/home/player/wyoming/sherpa-tts/model"
-PORT = 10200
+parser = argparse.ArgumentParser()
+parser.add_argument("--model-dir", required=True, help="Path to model directory")
+parser.add_argument("--port", type=int, default=10200, help="Port to listen on")
+args = parser.parse_args()
+
+MODEL_DIR = args.model_dir
+PORT = args.port
 SAMPLE_RATE = 22050
 CHUNK_SIZE = 4096  # samples per AudioChunk
 
