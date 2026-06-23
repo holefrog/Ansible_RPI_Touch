@@ -48,19 +48,19 @@ tts = sherpa_onnx.OfflineTts(
 INFO = Info(
     tts=[
         TtsProgram(
-            name="sherpa-tts",
+            name="piper",
             description="Matcha Chinese TTS",
             attribution=Attribution(name="k2-fsa", url="https://github.com/k2-fsa/sherpa-onnx"),
             installed=True,
             version="1.0",
             voices=[
                 TtsVoice(
-                    name="zh-baker",
+                    name="zh_CN-chaowen-medium",
                     description="Chinese female voice",
                     attribution=Attribution(name="k2-fsa", url="https://github.com/k2-fsa/sherpa-onnx"),
                     installed=True,
                     version="1.0",
-                    languages=["zh"],
+                    languages=["zh_CN"],
                 )
             ],
         )
