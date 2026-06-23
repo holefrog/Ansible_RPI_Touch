@@ -38,12 +38,14 @@ INFO = Info(
             description="SenseVoice offline STT",
             attribution=Attribution(name="k2-fsa", url="https://github.com/k2-fsa/sherpa-onnx"),
             installed=True,
+            version="1.0",
             models=[
                 AsrModel(
                     name="sense-voice-zh",
                     description="SenseVoice Chinese int8",
                     attribution=Attribution(name="k2-fsa", url="https://github.com/k2-fsa/sherpa-onnx"),
                     installed=True,
+                    version="1.0",
                     languages=["zh"],
                 )
             ],

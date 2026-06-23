@@ -32,10 +32,10 @@
     extra_opts: ["--strip-components=1"]
     creates: "{{ mediaplayer_home }}/wyoming/sherpa-tts/model/model-steps-3.onnx"
 
-- name: Download vocos vocoder
+- name: Download hifigan vocoder
   ansible.builtin.get_url:
-    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx"
-    dest: "{{ mediaplayer_home }}/wyoming/sherpa-tts/model/vocos-22khz-univ.onnx"
+    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/hifigan_v2.onnx"
+    dest: "{{ mediaplayer_home }}/wyoming/sherpa-tts/model/hifigan_v2.onnx"
     mode: '0644'
 
 - name: Deploy sherpa_tts_server.py

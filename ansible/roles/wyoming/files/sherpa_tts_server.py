@@ -10,7 +10,7 @@ import sherpa_onnx
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.tts import Synthesize
 from wyoming.event import read_event, write_event
-from wyoming.info import Attribution, Describe, Info, TtsModel, TtsProgram, TtsVoice
+from wyoming.info import Attribution, Describe, Info, TtsProgram, TtsVoice
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ tts = sherpa_onnx.OfflineTts(
         model=sherpa_onnx.OfflineTtsModelConfig(
             matcha=sherpa_onnx.OfflineTtsMatchaModelConfig(
                 acoustic_model=f"{MODEL_DIR}/model-steps-3.onnx",
-                vocoder=f"{MODEL_DIR}/vocos-22khz-univ.onnx",
+                vocoder=f"{MODEL_DIR}/hifigan_v2.onnx",
                 lexicon=f"{MODEL_DIR}/lexicon.txt",
                 tokens=f"{MODEL_DIR}/tokens.txt",
                 dict_dir=f"{MODEL_DIR}/dict",
@@ -52,12 +52,14 @@ INFO = Info(
             description="Matcha Chinese TTS",
             attribution=Attribution(name="k2-fsa", url="https://github.com/k2-fsa/sherpa-onnx"),
             installed=True,
+            version="1.0",
             voices=[
                 TtsVoice(
                     name="zh-baker",
                     description="Chinese female voice",
                     attribution=Attribution(name="k2-fsa", url="https://github.com/k2-fsa/sherpa-onnx"),
                     installed=True,
+                    version="1.0",
                     languages=["zh"],
                 )
             ],
