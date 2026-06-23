@@ -6,6 +6,12 @@
     virtualenv_command: "python3 -m venv"
     state: present
 
+- name: Deploy awake prompt audio
+  ansible.builtin.copy:
+    src: awake_prompt.wav
+    dest: "{{ mediaplayer_home }}/wyoming/satellite/awake_prompt.wav"
+    mode: '0644'
+
 - name: Deploy event scripts
   ansible.builtin.template:
     src: "{{ item }}.j2"

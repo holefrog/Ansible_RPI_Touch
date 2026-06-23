@@ -8,9 +8,10 @@ ExecStart={{ mediaplayer_home }}/wyoming/satellite/bin/python3 -m wyoming_satell
     --name "Raspberry Pi Touch" \
     --uri tcp://0.0.0.0:10700 \
     --mic-command "bash -c 'arecord -D hw:0 -r 48000 -c 2 -f S32_LE -t raw | sox -v 0.5 -t raw -r 48000 -c 2 -b 32 -e signed-integer - -t raw -r 16000 -c 1 -b 16 -e signed-integer -'" \
-    --snd-command "aplay -D plughw:0 -r 22050 -c 1 -f S16_LE -t raw" \
+    --snd-command "bash -c 'sox -t raw -r 22050 -c 1 -b 16 -e signed-integer - -t raw -r 22050 -c 1 -b 16 -e signed-integer - vol 3.0 | aplay -D plughw:0 -r 22050 -c 1 -f S16_LE -t raw'" \
     --wake-uri tcp://127.0.0.1:10400 \
     --wake-word-name bumblebee \
+    --awake-wav {{ mediaplayer_home }}/wyoming/satellite/awake_prompt.wav \
     --detection-command {{ mediaplayer_home }}/wyoming/satellite/awake.sh \
     --transcript-command {{ mediaplayer_home }}/wyoming/satellite/transcript.sh \
     --synthesize-command {{ mediaplayer_home }}/wyoming/satellite/synthesize.sh \
