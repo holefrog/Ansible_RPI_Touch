@@ -173,3 +173,37 @@ ExecStart=... --vad-filter
 | 噪音/静音处理 | **2分钟+** | **< 1秒**（VAD跳过） |
 | TTS 回复播放 | ❌ 完全不工作 | ✅ 正常播放 |
 | Hallucination | 频繁（反刍 prompt） | 极少（VAD 过滤） |
+
+---
+
+## 全新第二阶段（v3）：全链路时序、混音与增益调优 (2026-06-23)
+
+在此阶段，我们用 `sherpa-onnx` 彻底替换了 Whisper STT 和 Piper TTS，并解决了伴随而来的一系列体验问题。
+
+### 1. 唤醒体验优化：增加音频反馈与防截断机制
+- **问题**：唤醒后仅有界面变化，用户不知道何时可以开始说话。若加入唤醒提示音，又极易导致 UI 提早超时退出。
+- **修复**：
+  1. 在 `wyoming-satellite.service.j2` 中加入 `--awake-wav awake_prompt.wav` 参数，实现“听觉+视觉”同步反馈。
+  2. 修改 `ansible/roles/touchscreen/files/state_manager.py`，将 UI 的硬编码超时时间由 **6 秒延长至 10 秒**，给予充足的指令下达窗口。
+
+### 2. 语音流切断机制（VAD）调优：修复“说话中途被强行打断”
+- **问题**：用户语速较慢或中途停顿思考了约 2 秒钟，HA 就会强行切断连接，指令被中途腰斩。
+- **根因**：Home Assistant 语音管家（Assist Pipeline）中的 **VAD（Voice Activity Detection，静音检测）** 超时设定过短。
+- **修复**：在 HA 网页端 Assistant 设置界面中，将 **Finished speaking detection** 设置修改为 **Relaxed（宽松）**。
+
+### 3. 音频输出架构升级：全面接入 PipeWire 混音
+- **问题**：原有输出命令 `aplay -D plughw:0` 会独占声卡，极易与系统中的 Squeezelite、Airplay 产生冲突。且强行使用 `sox` 放大 3 倍极易产生破音。
+- **修复**：
+  1. 从配置中彻底移除了 ALSA 直连和 `sox` 暴力放大。
+  2. 改为使用 PulseAudio 兼容层的 `paplay`，精简为 `--snd-command "paplay --raw --rate=22050 --channels=1 --format=s16le"`。
+- **收益**：语音助手的提示音和 TTS 回复能与背景音乐完美混合并叠播，且基于系统的底层路由使得声音响度直接恢复正常，杜绝了破音风险。
+
+### 4. 麦克风增益悖论：修复“吼叫唤醒”与“30秒卡顿死锁”
+- **问题**：在安静环境下必须对着麦克风大喊才能唤醒；但远处的电视杂音却被清晰收录，甚至导致语音管家卡死长达 30 秒。
+- **根因（AGC错位）**：
+  1. 麦克风本地强制使用了 `sox -v 0.5`，导致音量直接砍半。本地唤醒引擎（Porcupine）收音极其微弱，迫使用户大喊。
+  2. HA 云端收到微弱音频后，触发了自带的 **Auto gain (自动增益)**，暴力放大了环境中的远场电视背景音。
+  3. 背景噪音导致 HA 的 VAD 检测不到静音，录音一直持续直至触发 30 秒强制超时上限。
+- **修复**：
+  1. **本地修改**：删除了 `wyoming-satellite` 麦克风参数中的 `sox -v 0.5`，恢复 100% 原始拾音，解决了“吼叫唤醒”问题。
+  2. **HA 设置**：在 HA 界面中**调低/关闭 Auto gain**，并将 **Noise suppression level** 提升至 **High/Maximum**，压制云端干扰，成功修复 30 秒卡顿死锁。
