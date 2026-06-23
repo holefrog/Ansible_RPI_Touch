@@ -55,12 +55,12 @@ INFO = Info(
             version="1.0",
             voices=[
                 TtsVoice(
-                    name="zh_CN-chaowen-medium",
+                    name="zh-baker",
                     description="Chinese female voice",
                     attribution=Attribution(name="k2-fsa", url="https://github.com/k2-fsa/sherpa-onnx"),
                     installed=True,
                     version="1.0",
-                    languages=["zh_CN"],
+                    languages=["zh"],
                 )
             ],
         )
