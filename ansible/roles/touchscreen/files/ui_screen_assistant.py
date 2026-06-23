@@ -105,6 +105,9 @@ class AssistantScreenRenderer(BaseUIRenderer):
             asst_text  = turn.get("assistant", "")
             turn_state = turn.get("state", "done")
 
+            if not user_text and turn_state != "listening":
+                user_text = "（未听清指令）"
+
             if user_text:
                 bubbles.append({
                     "side":  "user",

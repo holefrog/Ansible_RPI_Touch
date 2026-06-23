@@ -202,6 +202,12 @@ bg_color = "#121212"
     status_color = "#1DB954"
     color = "#B3B3B3"
 
+    [screens.info.service_wyoming]
+    pos = [20, 292]
+    font_size = 14
+    status_color = "#1DB954"
+    color = "#B3B3B3"
+
     # --- 右侧分栏：网络接口 (Network Interfaces) ---
     [screens.info.network_title]
     pos = [238, 68]
@@ -260,7 +266,7 @@ bg_color = "#121212"
     # --- 分割线几何参考 ---
     [screens.info.divider]
     start_pos = [228, 68]
-    end_pos = [228, 290]
+    end_pos = [228, 310]
     color = "#4D4D4D"
 
 # ==========================================
