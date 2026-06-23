@@ -229,3 +229,25 @@ ExecStart=... --vad-filter
   2. HA 挂断时不会发送标准的 `Error` 或 `Done` UDP 事件给卫星进程。
   3. 由于没有收到结束信号，屏幕 UI 完全不知道连接已断，只能硬扛代码里设定的 25 秒“兜底超时时间”，然后抛出超时警告。
 - **修复**：在 `state_manager.py` 中，将 `awake` 状态的兜底等待时间从 25.0 秒大幅缩短至 **8.0 秒**。若 HA 因没听清而默默挂断，屏幕也能迅速在 8 秒内复位，允许用户立刻重新唤醒。
+
+---
+
+## 极致优化阶段（v4）：引擎全量替换、100% 离线闭环与网络抗休眠加固 (2026-06-23)
+
+### 1. 核心引擎的彻底换血：引入 Sherpa-onnx
+- **背景**：原有 Whisper (STT) 推理太慢且在纯噪音下容易陷入长达2分钟的 Hallucination 死锁；原有 Piper (TTS) 在本地缺少依赖包。
+- **重构**：全面使用 `k2-fsa` 的 `sherpa-onnx` 框架替换原有组件。
+- **模型选型与优势**：
+  - **STT (SenseVoice-int8)**：支持多语言及方言混合识别。在树莓派上使用 int8 量化版本，引擎默认将其全量驻留内存，不仅完全无磁盘 I/O 瓶颈，而且有效降低了响应延迟，真正实现了“话音刚落，文字即出”。同时，为了避免阻塞 asyncio 事件循环，我们将 STT 的 `decode_stream` 调用包裹进了 `run_in_executor` 中。
+  - **TTS (Matcha-Icefall zh-baker + Vocos)**：采用极速的流匹配非自回归合成算法与 vocos 声码器，彻底解决了语音机械音问题，发音自然饱满。
+- **Ansible 部署幂等性修复**：修复了原 playbook 中 `unarchive` 解压模块过度依赖 `download.changed` 带来的隐患，改用 `creates` 参数判断解压目标文件是否存在；修正了 `sherpa-onnx` 的 404 模型下载链接错误。
+
+### 2. 经典“路由悖论”修复：解决树莓派能播音乐却 ping 不通的失联问题
+- **现象**：树莓派的本地播放器能正常出声（与 LMS 通信正常），但局域网内的电脑却无法 ping 通它，且 SSH 断连（报 `No route to host` / `Destination Host Unreachable`），需要重启才能恢复。
+- **根因（Wi-Fi 电源管理黑洞）**：树莓派闲置时，Wi-Fi 芯片进入 Power Save 模式，在此模式下它会无视所有入站的 ARP 广播包（导致局域网设备找不到它），但出站的播放器 TCP 通信却能反向唤醒芯片，从而造成“单向失联”错觉。
+- **修复**：在 Ansible playbook 的 `settings.yml` 中新增任务，向 `/etc/NetworkManager/conf.d/default-wifi-powersave-on.conf` 写入 `wifi.powersave = 2`，永久关闭树莓派的网络休眠功能。
+
+### 3. 实现真正的 100% 离线语音能力：原生 HA Intent 处理
+- **现象**：原生 Home Assistant (不连外网大模型) 听不懂“现在几点了”、“客厅温度”等日常指令。
+- **历史负债清理**：之前在树莓派端的 `transcript.sh.j2` 脚本中硬编码了一段本地 Python “黑代码”（拦截“几点”关键字并强行调包 Piper 播放）。我们将这层外挂逻辑彻底删除，将干净的文本透传给 UI。
+- **纯正解决方案**：在服务器的 HA `configuration.yaml` 中编写自定义 `intent_script`，利用 Jinja2 模板引擎 (`{{ now().strftime('%H点%M分') }}`) 直接抓取 HA 服务器本地的时钟与设备传感器数据，让 Home Assistant 原生对话代理在绝对离线的情况下也能具备全屋播报能力。
