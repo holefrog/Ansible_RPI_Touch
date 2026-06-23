@@ -107,7 +107,7 @@ class StateManager:
                 s.is_active = False  # 状态机完全复位
                 if s.history:
                     s.history[-1]["state"] = evt_type
-                s.close_at = time.time() + 4.0
+                s.close_at = time.time() + 12.0
 
             return s
 
