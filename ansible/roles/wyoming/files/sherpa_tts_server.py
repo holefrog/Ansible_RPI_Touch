@@ -9,7 +9,7 @@ import numpy as np
 import sherpa_onnx
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.tts import Synthesize
-from wyoming.event import read_event, write_event
+from wyoming.event import async_read_event, async_write_event
 from wyoming.info import Attribution, Describe, Info, TtsProgram, TtsVoice
 
 logger = logging.getLogger(__name__)
@@ -74,12 +74,12 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 
     try:
         while True:
-            event = await read_event(reader)
+            event = await async_read_event(reader)
             if event is None:
                 break
 
             if Describe.is_type(event.type):
-                await write_event(INFO.event(), writer)
+                await async_write_event(INFO.event(), writer)
 
             elif Synthesize.is_type(event.type):
                 synthesize = Synthesize.from_event(event)
@@ -95,21 +95,21 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 samples = np.array(result.samples, dtype=np.float32)
                 pcm = (samples * 32767).clip(-32768, 32767).astype(np.int16).tobytes()
 
-                await write_event(
+                await async_write_event(
                     AudioStart(rate=SAMPLE_RATE, width=2, channels=1).event(), writer
                 )
 
                 # 分块发送
                 for i in range(0, len(pcm), CHUNK_SIZE * 2):
                     chunk = pcm[i : i + CHUNK_SIZE * 2]
-                    await write_event(
+                    await async_write_event(
                         AudioChunk(
                             rate=SAMPLE_RATE, width=2, channels=1, audio=chunk
                         ).event(),
                         writer,
                     )
 
-                await write_event(AudioStop().event(), writer)
+                await async_write_event(AudioStop().event(), writer)
 
     except Exception:
         logger.exception("Client error: %s", addr)

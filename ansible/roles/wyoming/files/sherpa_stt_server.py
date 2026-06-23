@@ -9,7 +9,7 @@ import numpy as np
 import sherpa_onnx
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.asr import Transcribe, Transcript
-from wyoming.event import read_event, write_event
+from wyoming.event import async_read_event, async_write_event
 from wyoming.info import AsrModel, AsrProgram, Attribution, Describe, Info
 
 logger = logging.getLogger(__name__)
@@ -61,12 +61,12 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
 
     try:
         while True:
-            event = await read_event(reader)
+            event = await async_read_event(reader)
             if event is None:
                 break
 
             if Describe.is_type(event.type):
-                await write_event(INFO.event(), writer)
+                await async_write_event(INFO.event(), writer)
 
             elif AudioStart.is_type(event.type):
                 audio_buffer = []
@@ -91,7 +91,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                     logger.info("Transcript: %r", text)
                 else:
                     text = ""
-                await write_event(Transcript(text=text).event(), writer)
+                await async_write_event(Transcript(text=text).event(), writer)
                 audio_buffer = []
 
     except Exception:
