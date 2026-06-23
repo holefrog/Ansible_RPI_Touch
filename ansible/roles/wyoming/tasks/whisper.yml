@@ -19,7 +19,7 @@
 
 - name: Download SenseVoice int8 model
   ansible.builtin.get_url:
-    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17-int8.tar.bz2"
+    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2"
     dest: "/tmp/sense-voice-int8.tar.bz2"
     mode: '0644'
   register: model_download
