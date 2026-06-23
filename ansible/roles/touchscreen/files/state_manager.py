@@ -78,7 +78,7 @@ class StateManager:
                     s.was_playing_before_voice = is_playing
                     s.voice_state = "listening"
                     s.transcript_text = ""
-                    s.close_at = time.time() + 6  # 兜底超时时间
+                    s.close_at = time.time() + 10.0  # 兜底超时时间（增加以包容1秒的提示音及用户的语音输入）
                     s.history.append({"user": "", "assistant": "", "state": "listening"})
             elif evt_type == "synthesize":
                 if s.history:
