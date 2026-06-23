@@ -140,9 +140,10 @@ class AssistantScreenRenderer(BaseUIRenderer):
             lh = (f.size if hasattr(f, "size") else self.USER_FS) + self.LINE_GAP
             return len(b["lines"]) * lh + self.PAD * 2
 
+
         total_h = (sum(bh(b) + self.BUBBLE_GAP for b in bubbles)
                    - self.BUBBLE_GAP) if bubbles else 0
-        cy = max(CHAT_TOP, CHAT_BOT - total_h)
+        cy = min(CHAT_TOP, CHAT_BOT - total_h)
 
         for b in bubbles:
             f  = b["font"]
