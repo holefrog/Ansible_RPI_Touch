@@ -1,0 +1,19 @@
+# ansible/roles/voiceassistant/templates/wyoming-tts.service.j2
+# v1
+[Unit]
+Description=Wyoming TTS (sherpa-onnx matcha-zh-baker)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart={{ va_tts_dir }}/bin/python3 \
+    {{ va_tts_dir }}/sherpa_tts_server.py \
+    --model-dir {{ va_tts_dir }}/model
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

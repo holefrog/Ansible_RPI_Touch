@@ -1,0 +1,30 @@
+---
+# ansible/roles/voiceassistant/defaults/main.yml
+# v1
+
+# 基础路径（与 group_vars/all.yml 中的 mediaplayer_home 保持一致）
+va_base_dir: "{{ mediaplayer_home }}/voiceassistant"
+
+# LVA
+lva_repo_url: "https://github.com/OHF-Voice/linux-voice-assistant.git"
+lva_repo_dest: "{{ va_base_dir }}/linux-voice-assistant"
+lva_wake_word: "ok_nabu"
+
+# STT (sherpa-onnx SenseVoice)
+va_stt_dir: "{{ va_base_dir }}/sherpa-stt"
+va_stt_port: 10300
+va_stt_model_url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2"
+va_stt_model_check: "{{ va_stt_dir }}/model/model.int8.onnx"
+
+# TTS (sherpa-onnx matcha-zh-baker)
+va_tts_dir: "{{ va_base_dir }}/sherpa-tts"
+va_tts_port: 10200
+va_tts_model_url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-zh-baker.tar.bz2"
+va_tts_model_check: "{{ va_tts_dir }}/model/model-steps-3.onnx"
+va_tts_vocoder_url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/hifigan_v2.onnx"
+
+# UI 事件 UDP 端口（AssistantListener 监听端口，与 touchscreen role 保持一致）
+va_ui_udp_port: 10701
+
+# 用户运行时目录（PipeWire/Pulse socket 所在位置）
+va_user_runtime_dir: "{{ user_runtime_dir }}"

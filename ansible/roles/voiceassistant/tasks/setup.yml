@@ -1,0 +1,49 @@
+---
+# ansible/roles/voiceassistant/tasks/setup.yml
+# v1
+
+- name: Install voiceassistant system dependencies
+  become: yes
+  ansible.builtin.apt:
+    name:
+      - python3-venv
+      - python3-pip
+      - git
+      - portaudio19-dev
+      - ffmpeg
+      - sox
+      - libsox-fmt-all
+      # LVA 的 script/setup 需要编译 C++ 音频库
+      - build-essential
+      - cmake
+      - libffi-dev
+    state: present
+
+- name: Create voiceassistant base directory
+  ansible.builtin.file:
+    path: "{{ va_base_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Create systemd user service directory
+  ansible.builtin.file:
+    path: "{{ mediaplayer_home }}/.config/systemd/user"
+    state: directory
+    mode: '0755'
+
+- name: Clone linux-voice-assistant repository
+  ansible.builtin.git:
+    repo: "{{ lva_repo_url }}"
+    dest: "{{ lva_repo_dest }}"
+    version: main
+    update: yes
+    force: no
+
+- name: Run LVA setup script (builds venv + downloads OWW models)
+  ansible.builtin.command:
+    cmd: bash script/setup --cxxflags="-O1 -g0" --makeflags="-j4"
+    chdir: "{{ lva_repo_dest }}"
+    creates: "{{ lva_repo_dest }}/.venv/bin/python3"
+  # 在 RPi 4B 上首次编译约需 5-10 分钟，设置足够长的超时
+  async: 900
+  poll: 15

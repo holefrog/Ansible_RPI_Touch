@@ -1,0 +1,24 @@
+---
+# ansible/roles/voiceassistant/handlers/main.yml
+# v1
+
+- name: restart wyoming-stt
+  ansible.builtin.systemd:
+    name: wyoming-stt.service
+    state: restarted
+    scope: user
+    daemon_reload: yes
+
+- name: restart wyoming-tts
+  ansible.builtin.systemd:
+    name: wyoming-tts.service
+    state: restarted
+    scope: user
+    daemon_reload: yes
+
+- name: restart lva
+  ansible.builtin.systemd:
+    name: lva.service
+    state: restarted
+    scope: user
+    daemon_reload: yes

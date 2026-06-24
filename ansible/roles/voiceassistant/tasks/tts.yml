@@ -1,0 +1,53 @@
+---
+# ansible/roles/voiceassistant/tasks/tts.yml
+# v1
+
+- name: Install sherpa-onnx TTS dependencies
+  ansible.builtin.pip:
+    name:
+      - sherpa-onnx
+      - wyoming
+      - numpy
+    virtualenv: "{{ va_tts_dir }}"
+    virtualenv_command: "python3 -m venv"
+    state: present
+
+- name: Create TTS model directory
+  ansible.builtin.file:
+    path: "{{ va_tts_dir }}/model"
+    state: directory
+    mode: '0755'
+
+- name: Download matcha-icefall-zh-baker model
+  ansible.builtin.get_url:
+    url: "{{ va_tts_model_url }}"
+    dest: "/tmp/matcha-zh-baker.tar.bz2"
+    mode: '0644'
+
+- name: Extract matcha model
+  ansible.builtin.unarchive:
+    src: "/tmp/matcha-zh-baker.tar.bz2"
+    dest: "{{ va_tts_dir }}/model"
+    remote_src: yes
+    extra_opts: ["--strip-components=1"]
+    creates: "{{ va_tts_model_check }}"
+
+- name: Download hifigan vocoder
+  ansible.builtin.get_url:
+    url: "{{ va_tts_vocoder_url }}"
+    dest: "{{ va_tts_dir }}/model/hifigan_v2.onnx"
+    mode: '0644'
+
+- name: Deploy sherpa_tts_server.py
+  ansible.builtin.copy:
+    src: sherpa_tts_server.py
+    dest: "{{ va_tts_dir }}/sherpa_tts_server.py"
+    mode: '0644'
+  notify: restart wyoming-tts
+
+- name: Deploy wyoming-tts.service
+  ansible.builtin.template:
+    src: wyoming-tts.service.j2
+    dest: "{{ mediaplayer_home }}/.config/systemd/user/wyoming-tts.service"
+    mode: '0644'
+  notify: restart wyoming-tts

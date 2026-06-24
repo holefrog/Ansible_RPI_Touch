@@ -1,0 +1,22 @@
+# ansible/roles/voiceassistant/templates/lva.service.j2
+# v1
+[Unit]
+Description=Linux Voice Assistant (LVA) - ESPHome satellite for Home Assistant
+After=network-online.target pipewire.service pipewire-pulse.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory={{ lva_repo_dest }}
+# 官方 bare metal 安装复用 docker-entrypoint.sh 作为启动入口
+ExecStart={{ lva_repo_dest }}/docker-entrypoint.sh
+EnvironmentFile={{ lva_repo_dest }}/lva.env
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+Environment=XDG_RUNTIME_DIR={{ va_user_runtime_dir }}
+
+[Install]
+WantedBy=default.target

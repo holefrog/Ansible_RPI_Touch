@@ -1,0 +1,19 @@
+# ansible/roles/voiceassistant/templates/wyoming-stt.service.j2
+# v1
+[Unit]
+Description=Wyoming STT (sherpa-onnx SenseVoice)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart={{ va_stt_dir }}/bin/python3 \
+    {{ va_stt_dir }}/sherpa_stt_server.py \
+    --model-dir {{ va_stt_dir }}/model
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

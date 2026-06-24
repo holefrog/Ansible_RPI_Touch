@@ -1,0 +1,35 @@
+---
+# ansible/roles/voiceassistant/tasks/lva.yml
+# v1
+
+- name: Create LVA event scripts directory
+  ansible.builtin.file:
+    path: "{{ lva_repo_dest }}/event_scripts"
+    state: directory
+    mode: '0755'
+
+- name: Deploy LVA event scripts
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "{{ lva_repo_dest }}/event_scripts/{{ item }}"
+    mode: '0755'
+  loop:
+    - awake.sh
+    - done.sh
+    - transcript.sh
+    - tts-start.sh
+    - synthesize.sh
+
+- name: Deploy LVA environment file
+  ansible.builtin.template:
+    src: lva.env.j2
+    dest: "{{ lva_repo_dest }}/lva.env"
+    mode: '0600'
+  notify: restart lva
+
+- name: Deploy lva.service
+  ansible.builtin.template:
+    src: lva.service.j2
+    dest: "{{ mediaplayer_home }}/.config/systemd/user/lva.service"
+    mode: '0644'
+  notify: restart lva

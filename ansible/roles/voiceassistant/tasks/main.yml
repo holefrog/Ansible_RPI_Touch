@@ -1,0 +1,9 @@
+---
+# ansible/roles/voiceassistant/tasks/main.yml
+# v1
+
+- import_tasks: setup.yml
+- import_tasks: stt.yml
+- import_tasks: tts.yml
+- import_tasks: lva.yml
+- import_tasks: service.yml

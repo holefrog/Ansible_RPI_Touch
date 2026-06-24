@@ -1,0 +1,47 @@
+---
+# ansible/roles/voiceassistant/tasks/stt.yml
+# v1
+
+- name: Install sherpa-onnx STT dependencies
+  ansible.builtin.pip:
+    name:
+      - sherpa-onnx
+      - wyoming
+      - numpy
+    virtualenv: "{{ va_stt_dir }}"
+    virtualenv_command: "python3 -m venv"
+    state: present
+
+- name: Create STT model directory
+  ansible.builtin.file:
+    path: "{{ va_stt_dir }}/model"
+    state: directory
+    mode: '0755'
+
+- name: Download SenseVoice int8 model
+  ansible.builtin.get_url:
+    url: "{{ va_stt_model_url }}"
+    dest: "/tmp/sense-voice-int8.tar.bz2"
+    mode: '0644'
+
+- name: Extract SenseVoice model
+  ansible.builtin.unarchive:
+    src: "/tmp/sense-voice-int8.tar.bz2"
+    dest: "{{ va_stt_dir }}/model"
+    remote_src: yes
+    extra_opts: ["--strip-components=1"]
+    creates: "{{ va_stt_model_check }}"
+
+- name: Deploy sherpa_stt_server.py
+  ansible.builtin.copy:
+    src: sherpa_stt_server.py
+    dest: "{{ va_stt_dir }}/sherpa_stt_server.py"
+    mode: '0644'
+  notify: restart wyoming-stt
+
+- name: Deploy wyoming-stt.service
+  ansible.builtin.template:
+    src: wyoming-stt.service.j2
+    dest: "{{ mediaplayer_home }}/.config/systemd/user/wyoming-stt.service"
+    mode: '0644'
+  notify: restart wyoming-stt
