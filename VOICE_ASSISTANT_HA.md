@@ -1,5 +1,5 @@
 # 智能语音助手知识库
-# Wyoming Protocol + Home Assistant + Raspberry Pi 4B
+# Linux Voice Assistant (LVA) + ESPHome API + Home Assistant + Raspberry Pi 4B
 
 > 本文档是部署和维护本地离线语音助手系统的完整参考。按内容域分章，供 AI 按需取用。
 
@@ -48,7 +48,7 @@
 | 音频硬件 | WM8960 音频板（I2S，hw:0，S32_LE，48kHz 立体声）|
 | Home Assistant | QNAP 453Bmini 虚拟机，IP `192.168.50.236:8123` |
 | 树莓派 IP | `192.168.50.207` |
-| 部署方式 | Ansible（用户级 Systemd 服务，`player` 用户）|
+| 部署方式 | Ansible（用户级 Systemd 服务，`player` 用户，`roles/voiceassistant`）|
 
 ---
 
@@ -72,45 +72,78 @@ Home Assistant 运行在 J3455 虚拟机上。J3455 虽是 x86，但**硬件阉�
 
 ```
 日常待机        唤醒拦截              算力燃烧              收尾
-Porcupine  →  检测到 "Bumblebee"  →  暂停音乐            →  播报完毕
-1~2% CPU      发 awake 信号          CPU 全核推理 STT/TTS   发 play 恢复
-              弹出语音蒙版            无任何线程被饿死        蒙版消失
+OpenWakeWord →  检测到 "ok_nabu"  →  暂停音乐            →  播报完毕
+1~2% CPU        发 awake 信号         CPU 全核推理 STT/TTS   发 done 信号恢复
+                弹出语音蒙版           无任何线程被饿死        蒙版消失
 ```
 
 ---
 
 ## 3. 系统架构与数据流
 
+### 架构选型历史：从 Wyoming Satellite 到 LVA
+
+#### 旧架构（已废弃）：wyoming-satellite
+
+旧架构以 `wyoming-satellite` 作为卫星端核心，通过 Wyoming 协议连接 HA。
+
+**致命缺陷："2 秒必断"连接层 bug。**
+
+具体表现为：satellite 启动后连接 HA，约 2 秒内必然出现：
+
+```
+WARNING:root:Did not receive ping response within timeout
+INFO:root:Disconnected from server
+```
+
+**根因：** Wyoming 协议在 HA 侧和 satellite 侧之间存在 ping/pong 超时机制，两侧的时序存在竞争条件。这是 wyoming-satellite 项目的协议层 bug，与 VAD 配置、源码补丁、网络质量均无关。
+
+**尝试过的无效手段：**
+- 修改 `--ping-timeout` 参数——无效，HA 侧超时逻辑不受控
+- 魔改 `satellite.py` 源码，加入 stealth VAD 延迟连接——解决了"必须 2 秒内开口"的体验问题，但无法解决连接层 ping 超时
+- 关注上游 issue——社区大量同类报告，官方无修复计划
+
+**最终裁定：** `wyoming-satellite` 已于 **2026 年 1 月 27 日被官方归档（archived/read-only）**，官方明确声明以 Linux Voice Assistant（LVA）取代，不再接受 PR 或 issue。继续在死亡项目上打补丁没有出路。
+
+#### 新架构（现行）：Linux Voice Assistant (LVA)
+
+LVA 由 Open Home Foundation（OHF）开发，**完全抛弃 Wyoming 协议**，改用 **ESPHome 原生 API** 与 HA 通信。ESPHome API 是成熟的双向流式协议，连接稳定性从根本上解决了 ping 超时问题。
+
+**STT/TTS 不压在 HA 上：** LVA 只负责音频采集、唤醒词检测和音频流传输；STT/TTS 推理仍在树莓派本地的 sherpa-onnx 进程中运行，HA 通过 Wyoming Integration 调用它们，LVA 对此无感知。
+
 ### 组件端口总览
 
 | 服务 | 端口 | 角色 |
 |------|------|------|
-| `wyoming-porcupine1` | 10400 | 本地唤醒词检测（"Bumblebee"）|
-| `sherpa-onnx-stt` | 10300 | 本地 STT（SenseVoice-int8）|
-| `sherpa-onnx-tts` | 10200 | 本地 TTS（Matcha-Icefall + Vocos）|
-| `wyoming-satellite` | 10700 | 大管家，串联录音/唤醒/HA |
-| UDP 钩子（UI 信号）| 10701 | satellite → Python UI 的事件通道 |
+| `lva`（linux-voice-assistant）| ESPHome API | 卫星端，采集音频 + 唤醒词检测（ok_nabu）|
+| `wyoming-stt`（sherpa-onnx）| 10300 | 本地 STT（SenseVoice-int8），HA 调用 |
+| `wyoming-tts`（sherpa-onnx）| 10200 | 本地 TTS（Matcha-Icefall + Vocos），HA 调用 |
+| UDP 钩子（UI 信号）| 10701 | LVA event scripts → Python UI 的事件通道 |
 
 ### 完整数据流
 
 ```
-麦克风（parec，PipeWire）
+麦克风（PipeWire，PULSE_SERVER）
     ↓
-wyoming-satellite（10700）
-    ├─ 本地：wyoming-porcupine1（10400）持续监听唤醒词
-    │        检测到 "Bumblebee" → 发 UDP 至 10701
-    │                              ↓
-    │                         assistant_listener.py
-    │                              ↓
-    │                         main.py → 暂停 Squeezelite + 弹出蒙版
+lva（linux-voice-assistant）
+    ├─ 本地 OpenWakeWord 持续监听 "ok_nabu"
+    │   检测到后 → 执行 LVA_ON_WAKE_WORD 脚本
+    │                ↓
+    │           awake.sh → UDP 10701
+    │                ↓
+    │           assistant_listener.py → main.py
+    │                ↓
+    │           暂停 Squeezelite + 弹出语音蒙版
     │
-    └─ 唤醒后：连接 HA（192.168.50.236:8123）
-               HA 端 VAD 判断录音结束
-               音频回传 → sherpa-onnx-stt（10300）推理
-               文字 → HA 意图解析（custom_sentences）
-               回复文字 → sherpa-onnx-tts（10200）合成
-               音频 → paplay（PipeWire 混音输出）
-               Wyoming 发 done 信号 → satellite → UDP 10701
+    └─ 唤醒后：通过 ESPHome API 将音频流推送给 HA
+               HA Assist Pipeline 接管：
+                 ├── VAD 判断录音结束
+                 ├── 音频 → Wyoming Integration → sherpa-onnx STT（10300）推理
+                 ├── 文字 → HA 意图解析（custom_sentences）
+                 └── 回复文字 → Wyoming Integration → sherpa-onnx TTS（10200）合成
+               HA 将 TTS 音频流回推给 LVA
+               LVA 通过 PipeWire 播放
+               LVA 执行 LVA_ON_TTS_END 脚本 → done.sh → UDP 10701
                main.py → 恢复 Squeezelite + 关闭蒙版
 ```
 
@@ -126,62 +159,104 @@ wyoming-satellite（10700）
 | 依赖 | Python 依赖地狱 | 纯 C++ 内核，无依赖问题 |
 | 内存驻留 | 否 | STT 模型全量驻留内存，无磁盘 I/O |
 
-**为什么用 Porcupine v1：**
-- C 语言编写，CPU 占用长期维持 1%～2%
-- v1 版本**不需要 API Key**
+**为什么用 OpenWakeWord 而不是 Porcupine：**
+
+| 对比项 | Porcupine v1（已弃用）| OpenWakeWord（现用）|
+|--------|----------------------|---------------------|
+| 唤醒词 | bumblebee（LVA 不内置）| ok_nabu（LVA 原生支持）|
+| API Key | v1 不需要，但 v2+ 需要 | 完全开源，无 key |
+| 与 LVA 集成 | 不支持，需要独立 wyoming 服务 | LVA 内置，零配置 |
+| 维护状态 | 第三方集成，随 LVA 迭代可能失效 | 官方一等公民 |
 
 ---
 
 ## 4. 后台服务配置参考
 
-> 所有服务均部署为**用户级 Systemd 服务**（`player` 用户），通过 Ansible 的 `satellite.yml` 管理。
+> 所有服务均部署为**用户级 Systemd 服务**（`player` 用户），通过 Ansible 的 `roles/voiceassistant` 管理。
 
-### wyoming-satellite 关键启动参数
+### Ansible Role 结构
 
-```bash
-wyoming-satellite \
-  --uri tcp://0.0.0.0:10700 \
-  --mic-command "parec --raw --rate=16000 --channels=1 --format=s16le" \
-  --mic-command-samples-per-chunk 512 \
-  --snd-command "paplay --raw --rate=22050 --channels=1 --format=s16le" \
-  --tts-start-command /home/player/wyoming/satellite/tts-start.sh \
-  --tts-stop-command /home/player/wyoming/satellite/done.sh \
-  --error-command /home/player/wyoming/satellite/done.sh \
-  --vad \
-  --vad-buffer-seconds 0.5 \
-  --vad-wake-word-timeout 5 \
+```
+roles/voiceassistant/
+├── defaults/main.yml        # 所有可覆盖变量（路径、端口、唤醒词等）
+├── handlers/main.yml        # restart wyoming-stt / wyoming-tts / lva
+├── tasks/
+│   ├── main.yml             # import 顺序：setup → stt → tts → lva → service
+│   ├── setup.yml            # apt 依赖 + git clone LVA + script/setup 编译
+│   ├── stt.yml              # sherpa-onnx STT venv + 模型下载 + service
+│   ├── tts.yml              # sherpa-onnx TTS venv + 模型下载 + service
+│   ├── lva.yml              # event scripts 部署 + lva.env + lva.service
+│   └── service.yml          # systemd enable + start
+├── templates/
+│   ├── wyoming-stt.service.j2
+│   ├── wyoming-tts.service.j2
+│   ├── lva.service.j2       # ExecStart 指向 docker-entrypoint.sh（官方 bare metal 方案）
+│   ├── lva.env.j2           # 所有 LVA 环境变量（HA token、唤醒词、PipeWire socket）
+│   ├── awake.sh.j2          # → UDP 10701 {"event": "awake"}
+│   ├── done.sh.j2           # → UDP 10701 {"event": "done"}
+│   ├── transcript.sh.j2     # → UDP 10701 {"event": "transcript", "text": "..."}
+│   ├── tts-start.sh.j2      # → UDP 10701 {"event": "tts-start"}
+│   └── synthesize.sh.j2     # → UDP 10701 {"event": "synthesize", "text": "..."}
+└── files/
+    ├── sherpa_stt_server.py
+    └── sherpa_tts_server.py
 ```
 
-**关键参数说明：**
+### LVA 安装方式说明（Bare Metal）
 
-| 参数 | 值 | 说明 |
-|------|----|------|
-| `--mic-command` | `parec ...` | 使用 PipeWire，禁止使用 `arecord -D hw:0`（会死锁） |
-| `--mic-command-samples-per-chunk` | `512` | **开启 VAD 时的硬性要求。** 默认值为 1024，但底层的 Silero VAD 引擎严格要求每帧包含 512 个采样点（1024 bytes）。若不设置此项，只要检测到语音就会触发 `InvalidChunkSizeError` 导致主进程崩溃。|
-| `--snd-command` | `paplay ...` | 使用 PipeWire。**注意：此处的 `--rate=22050` 与当前 Matcha-Icefall 模型强绑定，若未来更换输出 24kHz 等其他格式的模型，此处必须同步修改。** |
-| `--awake-wav` | 自定义音频文件 | 唤醒后的听觉反馈，与视觉蒙版同步 |
-| `--vad-buffer-seconds` | `0.5` | 触发连接前保留的音频缓冲时间，用于防止吞字。**必须改小至 0.5s（默认2秒）**。原理：唤醒后至用户开口前，该缓冲区不断录入环境音（含唤醒提示音，HA 端 VAD 会判定该机械音为非人类语音，等同于静音）。当用户开口触发连线时，Satellite 会瞬间将缓冲区发给 HA。若保持默认的 2 秒，HA 会在瞬间收到长达 2 秒的非语音/静音历史数据，直接填满并触发 HA Assist 内部的 `vad_silence = 2` 秒超时判定，导致一连上就惨遭 HA 单方面挂断（即“2秒钟魔咒”根源）。将其缩短为 0.5 秒不仅保留了防吞字功能，还完美避开了该超时机制。|
-| `--vad-wake-word-timeout` | `5` | 唤醒后用户最长思考时间（秒），超时视为误唤醒 |
+LVA 官方对非 Docker 安装的标准流程：
 
-### VAD 本地魔改说明
+1. `git clone` 源码到 `/home/player/voiceassistant/linux-voice-assistant`
+2. 执行 `script/setup --cxxflags="-O1 -g0" --makeflags="-j4"` 构建 `.venv` 并下载 OWW 模型
+   （RPi 4B 首次编译约 5～10 分钟）
+3. systemd service 的 `ExecStart` 直接指向仓库内的 `docker-entrypoint.sh`
 
-**问题根源：** 原版 `wyoming-satellite` 在开启本地唤醒词后，**强制禁用** `--vad` 参数。导致唤醒后立刻连接 HA，用户必须在 HA 的 2 秒静音超时内抢答开口。
+> **官方说明：** LVA 在 bare metal 安装中复用 `docker-entrypoint.sh` 作为启动入口，不涉及任何 Docker 容器。通过 `EnvironmentFile` 注入的环境变量控制所有行为（HA 地址、唤醒词、PipeWire socket 路径、event 脚本路径等）。
 
-**解决方案：** 魔改树莓派本地的 `satellite.py` 源码。
-- **魔改内容：** 重写了 `WakeStreamingSatellite` 类的事件处理逻辑。唤醒后进入 `waiting_for_vad` 状态，此时麦克风音频仅在本地 `pysilero_vad` 引擎中做缓冲区判定。一旦侦测到实体语音，才会将 `is_streaming` 设为 True 并连接 HA，同时将缓冲区内的"前半句话"上报。
-- **持久化方案：** 为了防止上游升级或重装导致魔改代码丢失，该 patch 已整合进 Ansible 的 `roles/wyoming/tasks/satellite.yml` 中。在 `pip install` 之后，通过 Ansible `copy` 模块强制用我们预存的 `roles/wyoming/files/satellite.py` 覆盖官方文件。如果未来更换硬件或上游升级，仅需重新运行 playbook 即可自动打好补丁。
+### lva.service 关键配置
 
-**工作流变更：** 唤醒后，satellite 进入"本地隐身监听模式"，等本地 VAD 引擎检测到用户真正开口，才建立 HA 连接，并携带缓冲区中的"前半句话"一并上传。用户有完整的 5 秒思考时间。
+```ini
+[Unit]
+Description=Linux Voice Assistant (LVA) - ESPHome satellite for Home Assistant
+After=network-online.target pipewire.service pipewire-pulse.service
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/home/player/voiceassistant/linux-voice-assistant
+ExecStart=/home/player/voiceassistant/linux-voice-assistant/docker-entrypoint.sh
+EnvironmentFile=/home/player/voiceassistant/linux-voice-assistant/lva.env
+Restart=always
+RestartSec=5
+```
+
+### lva.env 关键环境变量
+
+| 变量 | 示例值 | 说明 |
+|------|--------|------|
+| `HA_HOST` | `192.168.50.236` | HA 局域网 IP（非 Tailscale）|
+| `HA_PORT` | `8123` | HA 端口 |
+| `HA_TOKEN` | `（长期访问令牌）` | 在 HA 用户页面生成，存入 Ansible vault |
+| `WAKEWORD` | `ok_nabu` | LVA 内置 OWW 模型名称 |
+| `PULSE_SERVER` | `unix:/run/user/1000/pulse/native` | PipeWire Pulse socket |
+| `XDG_RUNTIME_DIR` | `/run/user/1000` | 用户运行时目录 |
+| `LVA_ON_WAKE_WORD` | `…/event_scripts/awake.sh` | 唤醒回调 |
+| `LVA_ON_STT_END` | `…/event_scripts/transcript.sh` | 识别完成回调 |
+| `LVA_ON_TTS_START` | `…/event_scripts/tts-start.sh` | TTS 开始回调 |
+| `LVA_ON_TTS_END` | `…/event_scripts/done.sh` | TTS 结束回调 |
+
+> **待验证：** lva.env 中的事件回调变量名（`LVA_ON_WAKE_WORD` 等）需在 RPi 上线后对照 `docker-entrypoint.sh` 实际变量名核对，名称错误会导致 event scripts 静默不执行，UI 无法感知语音状态。
 
 ### sherpa-onnx-stt 注意事项
 
 - STT 模型（SenseVoice-int8）**全量驻留内存**，启动后无磁盘 I/O
 - 底层为 CTC/Transducer 架构，从根本上不会产生自回归幻觉死循环
+- 监听端口 10300，HA 通过 Wyoming Integration 调用
 
-### wyoming-porcupine1 注意事项
+### sherpa-onnx-tts 注意事项
 
-- 使用 **v1 版本**，无需 API Key
-- 唤醒词固定为 `bumblebee`
+- 模型：Matcha-Icefall-zh-baker + hifigan_v2 vocoder
+- 监听端口 10200，HA 通过 Wyoming Integration 调用
+- 输出采样率 22050Hz，PipeWire 负责格式协商，无需在 LVA 侧硬编码
 
 ---
 
@@ -189,11 +264,11 @@ wyoming-satellite \
 
 ### 核心原则：全面使用 PipeWire，禁止直连 ALSA
 
-| 方向 | 正确命令 | 禁止命令 | 禁止原因 |
-|------|---------|---------|---------|
-| 录音（麦克风）| `parec --raw --rate=16000 --channels=1 --format=s16le` | `arecord -D hw:0 ...` | 霸占底层 ALSA 通道，导致 PipeWire 挂起，Squeezelite 无声 |
+| 方向 | 正确方式 | 禁止方式 | 禁止原因 |
+|------|---------|---------|---------| 
+| 录音（麦克风）| LVA 通过 `PULSE_SERVER` 调用 PipeWire | `arecord -D hw:0 ...` | 霸占底层 ALSA 通道，导致 PipeWire 挂起，Squeezelite 无声 |
 | 录音（旧方案）| — | `arecord -D plughw:0 ...` | 在 WM8960 上产生白噪音，永远不要使用 |
-| 播放（TTS 输出）| `paplay --raw --rate=22050 --channels=1 --format=s16le` | `aplay -D plughw:0` | 独占声卡，与播放器冲突；`sox -v 3` 暴力放大易破音 |
+| 播放（TTS 输出）| LVA 通过 PipeWire 混音输出 | `aplay -D plughw:0` | 独占声卡，与播放器冲突 |
 
 ### WM8960 硬件参数
 
@@ -204,47 +279,47 @@ ALSA 设备：hw:0
 采样率：48kHz 立体声
 ```
 
+PipeWire 自动接管 WM8960 并负责格式协商，LVA/sherpa-onnx 只需通过 PulseAudio 兼容层请求目标格式，PipeWire 完成转换。
+
 ### 麦克风增益配置
 
-**不要使用 `sox -v 0.5` 衰减输入信号。** 衰减本地信号会让 HA 端的 Auto Gain 暴力放大远场杂音，导致 VAD 无法截断，引起 30 秒卡死死锁。
+**不要在链路中加 `sox -v 0.5` 衰减输入信号。** 衰减本地信号会让 HA 端 Auto Gain 暴力放大远场杂音，导致 VAD 无法截断，引起 30 秒卡死死锁。
 
 正确配置：
-- 本地：**删除 `sox -v 0.5`**，恢复原始拾音
+- 本地：保持原始拾音，不做衰减
 - HA 端：**关闭 Auto Gain**
 - HA 端：**Noise Suppression Level 设为 High / Maximum**
 
-### 音频处理链（正确版本）
+### 音频处理链（当前版本）
 
 ```
 WM8960 麦克风（hw:0，S32_LE，48kHz）
     ↓
 PipeWire 自动接管
     ↓
-parec 向 PipeWire 请求 16kHz/S16LE/单声道格式，由 PipeWire 负责格式协商转换并交付
-（wyoming-satellite mic-command：`parec --raw --rate=16000 --channels=1 --format=s16le`）
+LVA 通过 PULSE_SERVER 请求 16kHz/S16LE/单声道，PipeWire 负责格式协商转换
     ↓
-wyoming-satellite → HA → sherpa-onnx-stt
+ESPHome API → HA Assist Pipeline → sherpa-onnx STT（10300）
 ```
 
 ---
 
 ## 6. Home Assistant 接入与配置
 
-### 重要警告：忽略自动发现弹窗
+### 重要警告：忽略 ESPHome Voice Satellite 自动发现向导
 
-新版 HA 会自动发现 `wyoming-satellite` 并弹出 **Voice Satellite setup** 向导。**直接关闭，不要使用。** 误选"Full local processing"会在 J3455 虚拟机部署笨重插件，导致卡顿瘫痪。
+LVA 通过 ESPHome API 接入后，HA 会自动发现该设备并弹出配置向导。**按需配置，不要选择"Full local processing"**（会在 J3455 虚拟机部署笨重插件，导致卡顿瘫痪）。
 
-### 步骤 1：手动添加 Wyoming 集成（三次）
+### 步骤 1：添加 Wyoming Integration（两次，用于 STT/TTS）
 
-进入 **配置 → 设备与服务 → 添加集成**，搜索 **Wyoming Protocol**，依次添加：
+进入**配置 → 设备与服务 → 添加集成**，搜索 **Wyoming Protocol**，依次添加：
 
 | 添加次序 | 角色 | 主机 | 端口 |
 |---------|------|------|------|
 | 1 | STT（大脑）| `192.168.50.207` | `10300` |
 | 2 | TTS（嘴巴）| `192.168.50.207` | `10200` |
-| 3 | Satellite（身体）| `192.168.50.207` | `10700` |
 
-> 添加 10700 后 HA 会再次弹出 Voice Satellite setup 向导，点右上角 X 关闭即可。
+> LVA 卫星设备本身通过 ESPHome Integration 自动注册，无需手动添加 10700 端口。
 
 ### 步骤 2：防截断参数调整（关键）
 
@@ -253,23 +328,27 @@ wyoming-satellite → HA → sherpa-onnx-stt
 | 参数 | 推荐值 | 说明 |
 |------|--------|------|
 | Finished speaking detection | **Relaxed（宽松）** | 防止说话中途停顿被切断 |
-| Auto gain | **关闭** | 防止云端放大远场杂音导致 VAD 死锁 |
+| Auto gain | **关闭** | 防止放大远场杂音导致 VAD 死锁 |
 | Noise suppression level | **High / Maximum** | 抑制背景噪音 |
 
-### 步骤 3：组装语音助手
+### 步骤 3：组装语音助手 Pipeline
 
-进入 **配置 → 语音助手 → 添加助手**：
+进入**配置 → 语音助手 → 添加助手**：
 
 | 字段 | 值 |
-|------|----|
+|------|-----|
 | 名称 | Raspberry Pi Local Edge |
 | 语言 | 中文 (Chinese) |
 | 对话代理 | Home Assistant |
-| STT | 刚添加的 Sherpa-ONNX |
-| TTS | 刚添加的 Sherpa-ONNX |
-| 唤醒词 | （留空，本地 Porcupine 已代劳）|
+| STT | 刚添加的 Sherpa-ONNX（10300）|
+| TTS | 刚添加的 Sherpa-ONNX（10200）|
+| 唤醒词 | （留空，LVA 本地 OWW 已代劳）|
 
 创建后，点击助手右上角三个点 → **设为默认**（旁边会出现五角星）。
+
+### 步骤 4：将 LVA 设备关联至此 Pipeline
+
+在 ESPHome 集成的 LVA 设备页面，将其使用的语音助手指向上一步创建的 Pipeline。
 
 ---
 
@@ -327,16 +406,16 @@ intent_script:
 
 ### 信号通道
 
-- `assistant_listener.py`：监听本机 **10701** UDP 端口，接收 satellite 发出的事件信号
-- 信号类型：`awake`（唤醒）、`done`（完成）
+- `assistant_listener.py`：监听本机 **10701** UDP 端口，接收 LVA event scripts 发出的事件信号
+- 信号类型：`awake`（唤醒）、`transcript`（识别结果）、`tts-start`（TTS 开始）、`done`（完成）
 
 ### 状态与超时配置
 
 | 状态 | 超时配置 | 说明 |
 |------|---------|------|
-| `awake` 兜底超时 | **8.0 秒** | HA 静默挂断（如无有效识别）时触发兜底 timeout 或 error 信号，屏幕迅速复位 |
+| `awake` 兜底超时 | **8.0 秒** | HA 静默挂断时触发兜底 timeout，屏幕迅速复位 |
 | 指令窗口 | **10 秒** | 唤醒后用户下达指令的最大等待时间 |
-| 助手界面关闭 | **0 秒（立即退出）** | 当 Wyoming 最终触发 `done` 信号时（此时代表 TTS 播报必然完毕，或任务完全终结），UI 会**瞬间清空对话、退出蒙版，并向播放器发送 play 恢复命令**。不再死等旧版的超时秒数，彻底避免与音乐恢复时序冲突。|
+| 助手界面关闭 | **0 秒（立即退出）** | 收到 `done` 信号时 UI 瞬间清空对话、退出蒙版并恢复音乐 |
 
 ### 已知 UI Bug 及修复
 
@@ -353,7 +432,27 @@ cy = min(CHAT_TOP, CHAT_BOT - total_h)
 
 ## 9. 已知问题与根因分析
 
-### 问题一：STT 幻觉死循环（Whisper 专属，已通过换引擎解决）
+### 问题一：wyoming-satellite "2 秒必断"（已通过换架构根治）
+
+**现象：** wyoming-satellite 启动后约 2 秒，日志出现：
+```
+WARNING:root:Did not receive ping response within timeout
+INFO:root:Disconnected from server
+```
+随后反复重连，功能性断路。社区从 2024 年起大量同类报告。
+
+**根因：** Wyoming 协议的 ping/pong 超时机制在 HA 侧和 satellite 侧之间存在时序竞争，是协议层 bug。与 VAD 参数、源码补丁、网络质量无关。
+
+**尝试过的无效手段：**
+- 修改 `--ping-timeout` 参数
+- 魔改 `satellite.py`，加入 stealth VAD 延迟连接（该补丁解决了"必须 2 秒内开口"的体验问题，但无法触及连接层）
+- 上游已归档，无修复计划
+
+**根治方案：** 放弃 wyoming-satellite，迁移至 LVA（ESPHome API），连接层从协议上消除了此问题。
+
+---
+
+### 问题二：STT 幻觉死循环（Whisper 专属，已通过换引擎解决）
 
 **现象：** 纯噪音或静音的 3 秒音频，Whisper 需要 2 分 20 秒才能输出结果。
 
@@ -361,51 +460,42 @@ cy = min(CHAT_TOP, CHAT_BOT - total_h)
 
 **解决方案：** 替换为 Sherpa-ONNX（SenseVoice-int8），CTC 架构从根本上不存在此问题。
 
-> **若因特殊原因仍需使用 Whisper 的临时缓解措施：** 在 `wyoming-whisper.service` 的 ExecStart 中加上 `--vad-filter` 参数，让 Silero VAD 在推理前过滤静音段，耗时可从 2 分钟降到 < 1 秒。
-
 ---
 
-### 问题二：Squeezelite 进度条正常但无声音
+### 问题三：Squeezelite 进度条正常但无声音
 
 **现象：** Squeezelite 显示进度条在走，但喇叭没有声音。
 
 **根因：** `arecord -D hw:0` 直连 ALSA 霸占了声卡底层通道，PipeWire 试图接管声卡时抛出 `Device or resource busy`，声卡模块被挂起。
 
-**解决方案：** 将录音命令从 `arecord -D hw:0` 改为 `parec`（PipeWire 兼容层）。
+**解决方案：** 所有音频 I/O 均通过 PipeWire（LVA 使用 `PULSE_SERVER` 环境变量），不直连 ALSA。
 
 ---
 
-### 问题三：麦克风死锁（30 秒卡顿）
+### 问题四：麦克风死锁（30 秒卡顿）
 
 **现象：** 远处电视杂音被清晰收录，语音助手卡死约 30 秒。
 
-**根因（AGC 错位）：** 本地 `sox -v 0.5` 衰减了音频信号，HA 端 Auto Gain 检测到微弱信号后暴力放大，将远场噪音放大至接近语音级别，导致 VAD 无法判断"说话结束"而持续录音直到全局超时。
+**根因（AGC 错位）：** 链路中加入 `sox -v 0.5` 衰减了音频信号，HA 端 Auto Gain 检测到微弱信号后暴力放大，将远场噪音放大至接近语音级别，导致 VAD 无法判断"说话结束"而持续录音直到全局超时。
 
 **解决方案：**
-1. 删除本地 `sox -v 0.5`
+1. 本地不做任何衰减
 2. HA 端关闭 Auto Gain
 3. HA 端 Noise Suppression 调至 High/Maximum
 
 ---
 
-### 问题四：Piper TTS 无声音输出
+### 问题五：Piper TTS 无声音输出（历史，已换引擎）
 
 **现象：** TTS 无声，HA 端 ffmpeg 转码报错。
 
 **根因：** `ModuleNotFoundError: No module named 'unicode_rbnf'`。Piper 缺少此依赖导致中文 phonemize 失败，输出全是 0x00 的空 WAV 数据。
 
-**临时修复（历史参考）：**
-```bash
-ssh player@192.168.50.207
-/home/player/wyoming/piper/bin/pip install unicode-rbnf
-systemctl --user restart wyoming-piper
-```
-
 **根本解决：** 替换为 Sherpa-ONNX TTS（纯 C++，无此类依赖问题）。
 
 ---
 
-### 问题五：Wi-Fi 休眠导致单向失联
+### 问题六：Wi-Fi 休眠导致单向失联
 
 **现象：** 树莓派本地音乐正常播放（出站 TCP 正常），但局域网其他设备 Ping 不通，SSH 报 `No route to host`。
 
@@ -421,59 +511,39 @@ wifi.powersave = 2
 
 ---
 
-### 问题六：唤醒后必须抢答（2 秒内开口）
-
-**现象：** 唤醒后如果不在 2 秒内开口，HA 直接切断连接当做误唤醒。
-
-**根因：** 原版 `wyoming-satellite` 开启本地唤醒词后强制禁用 `--vad` 参数，唤醒后立刻连接 HA，受制于 HA 默认的短促静音超时。
-
-**解决方案：** 魔改 `satellite.py` 源码（详见第 4 章），实现本地 VAD 延迟连接。
-
----
-
-### 问题七：幽灵超时（唤醒后无响应卡 25 秒）
-
-**现象：** 唤醒后没有说话，屏幕卡住等待 25 秒后报错。
-
-**根因：** `awake` 状态的兜底超时设置过长（25 秒），HA 静默挂断后 UI 不知道，持续等待。
-
-**解决方案：** 将 `awake` 兜底超时从 25.0 秒缩短至 **8.0 秒**。
-
----
-
 ## 10. 日志查阅与时序排查法
 
 ### 重要前提：用户级服务
 
-所有 Wyoming 服务均为**用户级 Systemd 服务**，必须以 `player` 用户身份操作，**不能直接使用 `sudo systemctl`**。
+所有服务均为**用户级 Systemd 服务**，必须以 `player` 用户身份操作，**不能直接使用 `sudo systemctl`**。
 
 ```bash
 # 正确
-systemctl --user status wyoming-satellite
-systemctl --user restart sherpa-onnx-stt
+systemctl --user status lva
+systemctl --user restart wyoming-stt
 
 # 错误
-sudo systemctl status wyoming-satellite
+sudo systemctl status lva
 ```
 
 ### 实时追踪日志
 
 ```bash
 # 追踪单个服务
-journalctl --user -u wyoming-satellite -f
+journalctl --user -u lva -f
 
 # 同时追踪多个服务（按时间合并输出）
-journalctl --user -u wyoming-satellite -u sherpa-onnx-stt -u sherpa-onnx-tts -f
+journalctl --user -u lva -u wyoming-stt -u wyoming-tts -f
 ```
 
 ### 查阅历史日志
 
 ```bash
 # 过去 10 分钟
-journalctl --user -u wyoming-satellite --since "10 minutes ago"
+journalctl --user -u lva --since "10 minutes ago"
 
 # 昨天的 STT 日志
-journalctl --user -u sherpa-onnx-stt --since "yesterday"
+journalctl --user -u wyoming-stt --since "yesterday"
 ```
 
 ### 无日志报错处理
@@ -491,9 +561,9 @@ sudo usermod -aG systemd-journal player
 **方案 B：Root 临时查看**
 ```bash
 sudo journalctl \
-  _SYSTEMD_USER_UNIT=wyoming-satellite.service \
-  _SYSTEMD_USER_UNIT=sherpa-onnx-stt.service \
-  _SYSTEMD_USER_UNIT=sherpa-onnx-tts.service \
+  _SYSTEMD_USER_UNIT=lva.service \
+  _SYSTEMD_USER_UNIT=wyoming-stt.service \
+  _SYSTEMD_USER_UNIT=wyoming-tts.service \
   --since "5 minutes ago"
 ```
 
@@ -502,19 +572,19 @@ sudo journalctl \
 语音链路长，排查时不要靠感觉猜，直接比较各服务的时间戳：
 
 ```
-链路：本地唤醒 → HA 录音 VAD → 回传 STT → HA 意图解析 → 回传 TTS → PipeWire 播放
+链路：本地唤醒 → ESPHome API → HA VAD → 回传 STT → HA 意图解析 → 回传 TTS → PipeWire 播放
 
 排查步骤：
-1. 找"Porcupine 检测到 bumblebee"的时间戳 → T0（唤醒点）
-2. 找"STT 开始推理"的时间戳 → T1
-   T1 - T0 = 流式录音 + HA VAD 判定 + 网络回传的耗时
-3. 找"STT 输出识别结果"的时间戳 → T2
+1. 找 LVA 日志中 "wake word detected" 的时间戳 → T0（唤醒点）
+2. 找 "STT 开始推理" 的时间戳 → T1
+   T1 - T0 = ESPHome 流式录音 + HA VAD 判定 + Wyoming 回传耗时
+3. 找 "STT 输出识别结果" 的时间戳 → T2
    T2 - T1 = STT 推理耗时
-   若 > 10 秒，说明 STT 陷入异常（幻觉死循环或模型问题）
-4. 找"TTS 开始接收文字"的时间戳 → T3
+   若 > 10 秒，说明 STT 陷入异常
+4. 找 "TTS 开始接收文字" 的时间戳 → T3
    T3 - T2 = HA 意图解析 + 网络耗时
-5. 找"TTS 生成完毕"的时间戳 → T4
-   找"paplay 开始播放"的时间戳 → T5
+5. 找 "TTS 生成完毕" 的时间戳 → T4
+   找 "PipeWire 开始播放" 的时间戳 → T5
    T5 - T4 = 音频设备等待时间（若卡顿，检查 PipeWire 状态）
 ```
 
@@ -526,17 +596,17 @@ sudo journalctl \
 
 ### Wi-Fi 省电关闭
 
-参见第 9 章问题五。永久关闭树莓派 Wi-Fi Power Save，防止入站连接失联。
+参见第 9 章问题六。永久关闭树莓派 Wi-Fi Power Save，防止入站连接失联。
 
 ### HA 与树莓派的网络关系
 
 - HA 虚拟机 IP：`192.168.50.236:8123`
 - Tailscale **仅安装在 HA 虚拟机上**，局域网设备（包括树莓派）不可通过 Tailscale 访问 HA
-- 局域网设备直接通过 `192.168.50.236` 访问 HA
+- LVA 通过 `HA_HOST=192.168.50.236` 直连 HA，不经过 Tailscale
 
-### Satellite 轮询断连
+### 连接稳定性
 
-HA 每 8 秒对 satellite 进行轮询断连重连，这是正常行为，不影响整体功能，但在边界条件下可能导致事件丢失。无需干预，记录备查。
+LVA 使用 ESPHome API，该协议设计为长期稳定连接，无 Wyoming ping/pong 超时机制。连接中断时 LVA 自动重连（`RestartSec=5`），不影响整体功能。
 
 ---
 
@@ -552,23 +622,23 @@ HA 每 8 秒对 satellite 进行轮询断连重连，这是正常行为，不影
    进入 HA **设置 → 语音助手 → 暴露**，确保 `media_player.rpi_squeeze`（或对应实体名）对 Assist 可见。
 
 2. **分配到同一区域**
-   进入 HA **设置 → 区域与区域**，创建区域（如"桌面"），将 **Wyoming 卫星设备**和 **Squeezelite 播放器实体**分配到**同一区域**。
+   进入 HA **设置 → 区域与区域**，创建区域（如"桌面"），将 **LVA 设备**（ESPHome Integration 中）和 **Squeezelite 播放器实体**分配到**同一区域**。
 
 **效果：** 对着树莓派说"暂停"、"下一首"、"音量调到百分之五十"，HA 自动匹配该区域内的 `media_player` 并下发指令，不影响 PipeWire 混音比例。
 
 ### 唤醒时的播放器控制流（Python 层）
 
 ```
-wyoming-satellite 检测到唤醒词
+LVA 检测到唤醒词 "ok_nabu"
     ↓
-UDP 信号发至 10701
+执行 LVA_ON_WAKE_WORD → awake.sh → UDP 信号发至 10701
     ↓
 assistant_listener.py 接收
     ↓
 main.py → 向 Squeezelite/LMS 发送 pause 命令
          + 弹出语音蒙版
 
-语音交互完成，收到 done 信号（TTS音频必定已播放完毕）
+语音交互完成，LVA 执行 LVA_ON_TTS_END → done.sh → UDP 10701
     ↓
 main.py → 发送 play 命令恢复播放
          + 立即关闭语音蒙版
