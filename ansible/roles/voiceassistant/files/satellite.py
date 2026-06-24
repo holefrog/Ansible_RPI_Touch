@@ -59,8 +59,8 @@ def _send_ui_event(event: str, **kwargs) -> None:
         _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM).sendto(
             payload, ("127.0.0.1", 10701)
         )
-    except Exception:
-        pass  # 不允许 UI 通知失败影响主流程
+    except Exception as e:
+        _LOGGER.warning("发送 UI 通知 UDP 包失败: %s", e)
 # ─────────────────────────────────────────────────────────────────────────
 from .entity import (
     MediaPlayerEntity,
@@ -353,7 +353,6 @@ class VoiceSatelliteProtocol(APIServer):
             _LOGGER.debug("Thinking sound enabled")
         else:
             _LOGGER.debug("Thinking sound disabled")
-            pass
         self.state.save_preferences()
 
     def _set_sensitivity_1(self, new_value: float) -> None:
@@ -399,8 +398,6 @@ class VoiceSatelliteProtocol(APIServer):
             _LOGGER.debug("Unmuting voice assistant (voice_assistant.start_continuous)")
             self.state.tts_player.play(self.state.unmute_sound)
             # Resume normal operation - wake word detection will be active again
-            pass
-
     def handle_voice_event(self, event_type: VoiceAssistantEventType, data: Dict[str, str]) -> None:
         _LOGGER.debug("Voice event: type=%s, data=%s", event_type.name, data)
 
