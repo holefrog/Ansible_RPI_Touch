@@ -42,15 +42,14 @@ class InfoScreenRenderer(BaseUIRenderer):
             ("service_pipewire", "PipeWire", "pipewire"),
             ("service_wireplumber", "WirePlumber", "wireplumber"),
             ("service_volume", "Volume", "volume"),
-            ("service_wyoming", "Wyoming", "wyoming_all")
+            ("service_wyoming", "Voice Asst", "voice_all")
         ]
 
-        # 计算 Wyoming 综合状态
-        services_status["wyoming_all"] = (
-            services_status.get("wyoming-porcupine1", False) and
-            services_status.get("wyoming-whisper", False) and
-            services_status.get("wyoming-piper", False) and
-            services_status.get("wyoming-satellite", False)
+        # 计算 Voice Assistant 综合状态
+        services_status["voice_all"] = (
+            services_status.get("wyoming-stt", False) and
+            services_status.get("wyoming-tts", False) and
+            services_status.get("lva", False)
         )
 
         for i, (cfg_key, label, svc_key) in enumerate(service_configs):

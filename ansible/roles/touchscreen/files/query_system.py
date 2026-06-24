@@ -126,10 +126,9 @@ def get_services_status():
         "pipewire": ("user", "pipewire"),
         "wireplumber": ("user", "wireplumber"),
         "volume": ("user", "volume"),
-        "wyoming-porcupine1": ("user", "wyoming-porcupine1"),
-        "wyoming-whisper": ("user", "wyoming-whisper"),
-        "wyoming-piper": ("user", "wyoming-piper"),
-        "wyoming-satellite": ("user", "wyoming-satellite")
+        "wyoming-stt": ("user", "wyoming-stt"),
+        "wyoming-tts": ("user", "wyoming-tts"),
+        "lva": ("user", "lva")
     }
     
     status = {}
