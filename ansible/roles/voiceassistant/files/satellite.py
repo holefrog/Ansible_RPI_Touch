@@ -432,6 +432,13 @@ class VoiceSatelliteProtocol(APIServer):
         elif event_type == VoiceAssistantEventType.VOICE_ASSISTANT_INTENT_END:
             if data.get("continue_conversation") == "1":
                 self._continue_conversation = True
+            
+            # HA 通常会在 INTENT_END 或 TTS_END 阶段附带 TTS 文字
+            # 尝试提取文本内容，推送给 UI 做 synthesize 显示
+            tts_text = data.get("text") or data.get("response") or data.get("speech") or ""
+            if tts_text:
+                _send_ui_event("synthesize", text=tts_text)
+                
         elif event_type == VoiceAssistantEventType.VOICE_ASSISTANT_TTS_END:
             self._tts_url = data.get("url")
             self.play_tts()
