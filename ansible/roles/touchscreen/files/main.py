@@ -87,6 +87,19 @@ def main():
         from ui_boot_animation import play_boot_animation
         play_boot_animation(display_ctx, cfg["ui"].get("boot_animation", {}))
 
+        # ============================================
+        # 3.2 等待网络与 LMS 服务器就绪
+        # ============================================
+        import socket
+        logger.info(f"等待网络和 LMS 服务器 ({lms_params['host_ip']}:{lms_params['host_port']}) 就绪...")
+        while True:
+            try:
+                with socket.create_connection((lms_params["host_ip"], lms_params["host_port"]), timeout=2.0):
+                    logger.info("网络和 LMS 服务器已就绪！")
+                    break
+            except OSError:
+                time.sleep(0.5)
+
         state_mgr = StateManager(pactl_env, lms_params, touch)
         state_mgr.start_background_threads()
 
