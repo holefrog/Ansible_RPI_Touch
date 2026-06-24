@@ -926,6 +926,11 @@ class WakeStreamingSatellite(SatelliteBase):
                 chunk = AudioChunk.from_event(event)
                 audio_bytes = chunk.audio
 
+            if getattr(self, "vad_ignore_until", None) and time.monotonic() < self.vad_ignore_until:
+                if self.vad_buffer is not None:
+                    self.vad_buffer.put(audio_bytes)
+                return
+
             if not self.vad(audio_bytes):
                 if self.vad_buffer is not None:
                     self.vad_buffer.put(audio_bytes)
@@ -966,6 +971,7 @@ class WakeStreamingSatellite(SatelliteBase):
             if getattr(self, "vad", None) is not None:
                 import time
                 self.waiting_for_vad = True
+                self.vad_ignore_until = time.monotonic() + 1.2  # Ignore VAD for 1.2s to let awake_prompt finish
                 _LOGGER.info("Wake word detected! Entering stealth VAD listening mode...")
                 if self.settings.vad.wake_word_timeout is not None:
                     self.vad_timeout_seconds = time.monotonic() + self.settings.vad.wake_word_timeout
