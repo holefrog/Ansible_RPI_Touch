@@ -80,7 +80,7 @@ class st7796():
         
         self.GPIO_RST_PIN = DigitalOutputDevice(rst_pin,active_high = True,initial_value =True)
         self.GPIO_DC_PIN  = DigitalOutputDevice(dc_pin,active_high = True,initial_value =True)
-        self.GPIO_BL_PIN  = SmartBacklight(bl_pin, frequency=1000, initial_value=1.0)               # 接入智能纯硬件背光驱动
+        self.GPIO_BL_PIN  = SmartBacklight(bl_pin, frequency=1000, initial_value=0.0)               # 接入智能纯硬件背光驱动，初始化为0防止花屏
         #Initialize SPI
         self.SPI = spidev.SpiDev(spi_bus, spi_device)
         self.SPI.max_speed_hz = spi_freq  
@@ -96,6 +96,8 @@ class st7796():
         self._current_orientation = "portrait"
 
         self.lcd_init()
+        self.clear()
+        self.GPIO_BL_PIN.value = 1.0
     
     def bl_DutyCycle(self, duty):                   # 设置 PWM 占空比
         pass # 已废弃，背光改为常亮
