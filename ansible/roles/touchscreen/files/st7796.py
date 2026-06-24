@@ -225,10 +225,13 @@ class st7796():
         self.command(0x21) # INVON: 必须开启，该IPS屏幕硬件级需要颜色反转
 
         self.command(0x11)
-
         time.sleep(0.1)
-
         self.command(0x29)
+
+        # Default to landscape to prevent white bar on the right when clear() is called
+        self.command(0x36)
+        self.data(0xE8) # MY=1, MX=1, MV=1, ML=0, BGR=1
+        self._current_orientation = "landscape"
         
     def set_windows(self, Xstart, Ystart, Xend, Yend, horizontal = 0):
         if horizontal:  
