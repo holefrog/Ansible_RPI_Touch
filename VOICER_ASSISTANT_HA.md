@@ -154,7 +154,7 @@ wyoming-satellite \
 | 参数 | 值 | 说明 |
 |------|----|------|
 | `--mic-command` | `parec ...` | 使用 PipeWire，禁止使用 `arecord -D hw:0`（会死锁） |
-| `--snd-command` | `paplay ...` | 使用 PipeWire，禁止使用 `aplay -D plughw:0`（独占声卡）|
+| `--snd-command` | `paplay ...` | 使用 PipeWire。**注意：此处的 `--rate=22050` 与当前 Matcha-Icefall 模型强绑定，若未来更换输出 24kHz 等其他格式的模型，此处必须同步修改。** |
 | `--awake-wav` | 自定义音频文件 | 唤醒后的听觉反馈，与视觉蒙版同步 |
 | `--vad-wake-word-timeout` | `5` | 唤醒后用户最长思考时间（秒），超时视为误唤醒 |
 
@@ -162,7 +162,9 @@ wyoming-satellite \
 
 **问题根源：** 原版 `wyoming-satellite` 在开启本地唤醒词后，**强制禁用** `--vad` 参数。导致唤醒后立刻连接 HA，用户必须在 HA 的 2 秒静音超时内抢答开口。
 
-**解决方案：** 魔改树莓派本地的 `satellite.py` 源码，通过 Ansible `satellite.yml` 持久化覆盖。
+**解决方案：** 魔改树莓派本地的 `satellite.py` 源码。
+- **魔改内容：** 重写了 `WakeStreamingSatellite` 类的事件处理逻辑。唤醒后进入 `waiting_for_vad` 状态，此时麦克风音频仅在本地 `pysilero_vad` 引擎中做缓冲区判定。一旦侦测到实体语音，才会将 `is_streaming` 设为 True 并连接 HA，同时将缓冲区内的"前半句话"上报。
+- **持久化方案：** 为了防止上游升级或重装导致魔改代码丢失，该 patch 已整合进 Ansible 的 `roles/wyoming/tasks/satellite.yml` 中。在 `pip install` 之后，通过 Ansible `copy` 模块强制用我们预存的 `roles/wyoming/files/satellite.py` 覆盖官方文件。如果未来更换硬件或上游升级，仅需重新运行 playbook 即可自动打好补丁。
 
 **工作流变更：** 唤醒后，satellite 进入"本地隐身监听模式"，等本地 VAD 引擎检测到用户真正开口，才建立 HA 连接，并携带缓冲区中的"前半句话"一并上传。用户有完整的 5 秒思考时间。
 
@@ -211,9 +213,10 @@ ALSA 设备：hw:0
 ```
 WM8960 麦克风（hw:0，S32_LE，48kHz）
     ↓
-PipeWire 自动接管（降采样至 16kHz 单声道）
+PipeWire 自动接管
     ↓
-parec（wyoming-satellite mic-command）
+parec 向 PipeWire 请求 16kHz/S16LE/单声道格式，由 PipeWire 负责格式协商转换并交付
+（wyoming-satellite mic-command：`parec --raw --rate=16000 --channels=1 --format=s16le`）
     ↓
 wyoming-satellite → HA → sherpa-onnx-stt
 ```
@@ -307,10 +310,11 @@ intent_script:
       text: "现在是 {{ now().strftime('%p %I点%M分') | replace('AM', '上午') | replace('PM', '下午') }}"
 ```
 
-**说明：**
-- `[上|闭]` 语法提供可选词，消除分词歧义
-- `{name}` 为槽位，自动捕获设备名称
-- `GetTimeIntent` 直接使用 Jinja2 读取本地系统时间，**全程离线，不调用任何外部 LLM**
+**配置说明与适用范围：**
+- `[上|闭]` 语法提供可选词，解决特定边界下的分词歧义。
+- `{name}` 为槽位，自动捕获设备名称。**注意：这取决于 HA 中已暴露的实体列表，未暴露的设备无法被识别。**
+- **为何不用内置意图：** HA 的 HassTurnOn/Off 内置意图本身支持中文，但对类似"关上客厅灯"这种高频错误边界（切分为"上客厅"）处理不佳。本方案并非通用的中文控制核心，而是针对已知中文分词 Bad Case 的定向补丁方案。
+- `GetTimeIntent` 直接使用 Jinja2 读取本地系统时间，**全程离线，不调用任何外部 LLM**。
 
 ---
 
@@ -325,9 +329,9 @@ intent_script:
 
 | 状态 | 超时配置 | 说明 |
 |------|---------|------|
-| `awake` 兜底超时 | **8.0 秒** | HA 默默挂断时，屏幕能迅速复位（原 25 秒太长）|
-| `done` 关闭延时 | **12.0 秒** | 让气泡陪 TTS 音频播放完毕后再消失（原 4 秒太短）|
-| 指令窗口 | **10 秒** | 唤醒后用户下达指令的最大等待时间（原 6 秒太短）|
+| `awake` 兜底超时 | **8.0 秒** | HA 静默挂断（如无有效识别）时触发兜底 timeout 或 error 信号，屏幕迅速复位 |
+| 指令窗口 | **10 秒** | 唤醒后用户下达指令的最大等待时间 |
+| 助手界面关闭 | **0 秒（立即退出）** | 当 Wyoming 最终触发 `done` 信号时（此时代表 TTS 播报必然完毕，或任务完全终结），UI 会**瞬间清空对话、退出蒙版，并向播放器发送 play 恢复命令**。不再死等旧版的超时秒数，彻底避免与音乐恢复时序冲突。|
 
 ### 已知 UI Bug 及修复
 
@@ -559,8 +563,8 @@ assistant_listener.py 接收
 main.py → 向 Squeezelite/LMS 发送 pause 命令
          + 弹出语音蒙版
 
-语音交互完成，收到 done 信号
+语音交互完成，收到 done 信号（TTS音频必定已播放完毕）
     ↓
 main.py → 发送 play 命令恢复播放
-         + 关闭语音蒙版（延时 12 秒）
+         + 立即关闭语音蒙版
 ```
