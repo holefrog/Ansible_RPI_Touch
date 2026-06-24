@@ -24,12 +24,12 @@ network_wait_color = [200, 50, 50]
 [boot_animation.network_wait_text1]
 text = "SYSTEM BOOTING"
 font_size = 30
-# pos = [60, 100]
+pos = [110, 100]
 
 [boot_animation.network_wait_text3]
 text = "WAITING FOR SERVER"
 font_size = 20
-# pos = [60, 240]
+pos = [135, 150]
 
 # ==========================================
 # 2. 共享状态栏 (Status Bar)
