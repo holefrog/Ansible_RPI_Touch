@@ -48,7 +48,7 @@ tts = sherpa_onnx.OfflineTts(
 INFO = Info(
     tts=[
         TtsProgram(
-            name="piper",
+            name="sherpa-tts",
             description="Matcha Chinese TTS",
             attribution=Attribution(name="k2-fsa", url="https://github.com/k2-fsa/sherpa-onnx"),
             installed=True,

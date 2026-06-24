@@ -9,9 +9,9 @@ logger = logging.getLogger("AssistantListener")
 
 class AssistantListener:
     """
-    极轻量级的 UDP 监听器。
-    用于接收来自 Wyoming Satellite 触发的各种状态事件（如唤醒、识别出文字、结束等），
-    并将这些事件放入线程安全的队列中，供主线程消费。
+    UDP 监听器（运行在主线程中的异步任务）
+    用于接收来自 Linux Voice Assistant (LVA) 触发的各种状态事件（如唤醒、识别出文字、结束等），
+    并将其放入 asyncio Queue 中供主循环消费。
     """
     def __init__(self, host='127.0.0.1', port=10701):
         self.host = host
