@@ -8,6 +8,7 @@ ExecStart={{ mediaplayer_home }}/wyoming/satellite/bin/python3 -m wyoming_satell
     --name "Raspberry Pi Touch" \
     --uri tcp://0.0.0.0:10700 \
     --mic-command "parec --raw --rate=16000 --channels=1 --format=s16le" \
+    --mic-command-samples-per-chunk 512 \
     --snd-command "paplay --raw --rate=22050 --channels=1 --format=s16le" \
     --wake-uri tcp://127.0.0.1:10400 \
     --wake-word-name bumblebee \

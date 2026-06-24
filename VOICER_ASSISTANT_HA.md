@@ -142,6 +142,7 @@ wyoming-satellite（10700）
 wyoming-satellite \
   --uri tcp://0.0.0.0:10700 \
   --mic-command "parec --raw --rate=16000 --channels=1 --format=s16le" \
+  --mic-command-samples-per-chunk 512 \
   --snd-command "paplay --raw --rate=22050 --channels=1 --format=s16le" \
   --wake-uri tcp://localhost:10400 \
   --wake-word-name bumblebee \
@@ -154,6 +155,7 @@ wyoming-satellite \
 | 参数 | 值 | 说明 |
 |------|----|------|
 | `--mic-command` | `parec ...` | 使用 PipeWire，禁止使用 `arecord -D hw:0`（会死锁） |
+| `--mic-command-samples-per-chunk` | `512` | **开启 VAD 时的硬性要求。** 默认值为 1024，但底层的 Silero VAD 引擎严格要求每帧包含 512 个采样点（1024 bytes）。若不设置此项，只要检测到语音就会触发 `InvalidChunkSizeError` 导致主进程崩溃。|
 | `--snd-command` | `paplay ...` | 使用 PipeWire。**注意：此处的 `--rate=22050` 与当前 Matcha-Icefall 模型强绑定，若未来更换输出 24kHz 等其他格式的模型，此处必须同步修改。** |
 | `--awake-wav` | 自定义音频文件 | 唤醒后的听觉反馈，与视觉蒙版同步 |
 | `--vad-wake-word-timeout` | `5` | 唤醒后用户最长思考时间（秒），超时视为误唤醒 |
