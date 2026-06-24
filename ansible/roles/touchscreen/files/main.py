@@ -110,35 +110,74 @@ def main():
         w = display_ctx["width"]
         h = display_ctx["height"]
         
-        boot_cfg = cfg["ui"].get("boot_animation", {})
-        wait_text = boot_cfg.get("network_wait_text", "SYSTEM BOOTING... WAITING FOR SERVER")
-        wait_color = tuple(boot_cfg.get("network_wait_color", [200, 50, 50]))
+        if "ui" not in cfg or "boot_animation" not in cfg["ui"] or "global" not in cfg["ui"]:
+            logger.error("Missing ui config. Exiting.")
+            sys.exit(1)
+
+        boot_cfg = cfg["ui"]["boot_animation"]
+        global_cfg = cfg["ui"]["global"]
         
-        wait_pos = boot_cfg.get("network_wait_pos", None)
+        if "network_wait_text1" not in boot_cfg or "network_wait_text3" not in boot_cfg or "font_main" not in global_cfg:
+            logger.error("Missing necessary ui config items. Exiting.")
+            sys.exit(1)
+
+        if "network_wait_color" not in boot_cfg:
+            logger.error("Missing network_wait_color. Exiting.")
+            sys.exit(1)
+
+        t1_cfg = boot_cfg["network_wait_text1"]
+        t3_cfg = boot_cfg["network_wait_text3"]
         
-        try:
-            # 获取全局字体
-            global_cfg = cfg["ui"].get("global", {})
-            font_path = global_cfg.get("font_main", "./resources/PingFang-SC-Regular.ttf")
-            # Convert to absolute path if needed, but it should be handled if relative to PWD
-            # Wait, `ui_config_parser` doesn't resolve paths. main.py is run from ts_app_dir.
-            font = ImageFont.truetype(font_path, 24)
-        except Exception:
-            font = ImageFont.load_default()
+        if not isinstance(t1_cfg, dict) or not isinstance(t3_cfg, dict):
+            logger.error("network_wait_text1 and 3 must be dictionaries. Exiting.")
+            sys.exit(1)
             
+        if "text" not in t1_cfg or "font_size" not in t1_cfg or "text" not in t3_cfg or "font_size" not in t3_cfg:
+            logger.error("Missing text or font_size in network_wait text configs. Exiting.")
+            sys.exit(1)
+
+        wait_text1 = t1_cfg["text"]
+        wait_text3 = t3_cfg["text"]
+        
+        size1 = t1_cfg["font_size"]
+        size3 = t3_cfg["font_size"]
+        
+        pos1 = t1_cfg.get("pos")
+        pos3 = t3_cfg.get("pos")
+
+        wait_color = tuple(boot_cfg["network_wait_color"])
+        font_path = global_cfg["font_main"]
+
+        try:
+            font1 = ImageFont.truetype(font_path, size1)
+            font3 = ImageFont.truetype(font_path, size3)
+        except Exception as e:
+            logger.error(f"Failed to load fonts from {font_path}: {e}")
+            sys.exit(1)
+
         wait_img = Image.new("RGB", (w, h), (0, 0, 0))
         draw = ImageDraw.Draw(wait_img)
-        
-        if wait_pos is None:
+
+        def get_text_size(text, font):
             try:
-                bbox = draw.textbbox((0,0), wait_text, font=font)
-                tw = bbox[2] - bbox[0]
-                th = bbox[3] - bbox[1]
+                bbox = draw.textbbox((0, 0), text, font=font)
+                return bbox[2] - bbox[0], bbox[3] - bbox[1]
             except AttributeError:
-                tw, th = draw.textsize(wait_text, font=font)
-            wait_pos = ((w - tw) // 2, (h - th) // 2)
-            
-        draw.text(wait_pos, wait_text, font=font, fill=wait_color)
+                return draw.textsize(text, font=font)
+
+        w1, h1 = get_text_size(wait_text1, font1)
+        w3, h3 = get_text_size(wait_text3, font3)
+        
+        h2 = 20 # Empty line height
+        total_h = h1 + h2 + h3
+        auto_start_y = (h - total_h) // 2
+        
+        draw_pos1 = tuple(pos1) if pos1 else ((w - w1) // 2, auto_start_y)
+        draw_pos3 = tuple(pos3) if pos3 else ((w - w3) // 2, auto_start_y + h1 + h2)
+
+        draw.text(draw_pos1, wait_text1, font=font1, fill=wait_color)
+        draw.text(draw_pos3, wait_text3, font=font3, fill=wait_color)
+
         device.show_image(wait_img)
 
         while True:
