@@ -67,18 +67,18 @@ def main():
         )
 
         # ============================================
-        # 3. 初始化触摸屏 & UI 渲染器
+        # 2.5 播放开机动画 (Terminator Boot)
+        # ============================================
+        from ui_boot_animation import play_boot_animation
+        play_boot_animation(display_ctx, cfg["ui"].get("boot_animation", {}))
+
+        # ============================================
+        # 3. 初始化触摸屏
         # ============================================
         try:
             touch = ft6336u()
         except NameError:
             touch = None
-
-        # ============================================
-        # 3.1 播放开机动画 (Terminator Boot)
-        # ============================================
-        from ui_boot_animation import play_boot_animation
-        play_boot_animation(display_ctx, cfg["ui"].get("boot_animation", {}))
 
         # ============================================
         # 3.2 准备底层环境 (后台并行初始化)
