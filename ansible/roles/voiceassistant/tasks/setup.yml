@@ -41,7 +41,7 @@
 
 - name: Run LVA setup script (builds venv + downloads OWW models)
   ansible.builtin.command:
-    cmd: bash script/setup --cxxflags="-O1 -g0" --makeflags="-j4"
+    cmd: python3 script/setup --cxxflags="-O1 -g0" --makeflags="-j4"
     chdir: "{{ lva_repo_dest }}"
     creates: "{{ lva_repo_dest }}/.venv/bin/python3"
   # 在 RPi 4B 上首次编译约需 5-10 分钟，设置足够长的超时
