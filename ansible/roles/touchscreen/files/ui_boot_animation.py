@@ -102,7 +102,7 @@ def play_boot_animation(display_ctx, config):
             draw.ellipse(bbox, fill=color_with_alpha)
 
         # Send frame to SPI display
-        device.display(img)
+        device.show_image(img)
 
         # Prevent 100% CPU pinning
         time.sleep(0.01)
@@ -111,7 +111,7 @@ def play_boot_animation(display_ctx, config):
     img = Image.new("RGB", (width, height), (0, 0, 0))
     draw = ImageDraw.Draw(img, "RGBA")
     draw.ellipse([center[0] - max_radius, center[1] - max_radius, center[0] + max_radius, center[1] + max_radius], fill=(r, g, b, 255))
-    device.display(img)
+    device.show_image(img)
     
     # Hold for a tiny fraction just to show the final state
     time.sleep(0.1)
