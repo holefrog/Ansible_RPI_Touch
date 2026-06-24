@@ -878,19 +878,14 @@ class WakeStreamingSatellite(SatelliteBase):
         self.vad_timeout_seconds: Optional[float] = None
         
         if settings.vad.enabled:
-            try:
-                from pysilero_vad import SileroVad
-            except ImportError:
-                _LOGGER.warning("pysilero_vad not installed, VAD stealth mode disabled.")
-            else:
-                import math
-                from wyoming.ring_buffer import RingBuffer
-                self.vad = SileroVad(
-                    threshold=settings.vad.threshold, trigger_level=settings.vad.trigger_level
-                )
-                if settings.vad.buffer_seconds > 0:
-                    vad_buffer_bytes = int(math.ceil(settings.vad.buffer_seconds * 16000 * 2))
-                    self.vad_buffer = RingBuffer(maxlen=vad_buffer_bytes)
+            import math
+            from wyoming.ring_buffer import RingBuffer
+            self.vad = SileroVad(
+                threshold=settings.vad.threshold, trigger_level=settings.vad.trigger_level
+            )
+            if settings.vad.buffer_seconds > 0:
+                vad_buffer_bytes = int(math.ceil(settings.vad.buffer_seconds * 16000 * 2))
+                self.vad_buffer = RingBuffer(maxlen=vad_buffer_bytes)
 
     async def event_from_server(self, event: Event) -> None:
         if Transcript.is_type(event.type):
