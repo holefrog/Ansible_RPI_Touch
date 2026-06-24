@@ -112,9 +112,12 @@ HA 每 8 秒对 satellite 进行轮询断连重连，虽不影响整体功能，
 * **问题**：用户语速较慢或停顿思考 2 秒，HA 就强行切断连接。
 * **修复**：将 HA 中 Assistant 的 **Finished speaking detection** 从 Aggressive 改为 **Relaxed（宽松）**。
 
-### 3. 音频输出架构升级：全面接入 PipeWire 混音
-* **问题**：原输出命令 `aplay -D plughw:0` 独占声卡，与系统播放器冲突，且用 `sox` 强行放大 3 倍极易破音。
-* **修复**：移除 ALSA 直连与 `sox`，改用 PulseAudio 兼容层 `--snd-command "paplay --raw --rate=22050 --channels=1 --format=s16le"`，实现语音提示与音乐的完美叠播混合，解决破音。
+### 3. 音频底层架构全面升级：拥抱 PipeWire 混音与共享
+* **问题 1（输出抢占）**：原输出命令 `aplay -D plughw:0` 独占声卡，与系统播放器冲突，且用 `sox` 强行放大 3 倍极易破音。
+* **问题 2（输入死锁）**：原录音命令 `arecord -D hw:0 ... | sox ...` 霸占了麦克风的底层 ALSA 通道。导致 PipeWire 试图接管声卡时抛出 `Device or resource busy`，进而导致整个声卡模块被挂起。这正是**导致 Squeezelite 进度条正常却发不出声音的万恶之源**。
+* **终极修复**：全面废弃 ALSA 直连！将音频输入输出全部交给 PulseAudio/PipeWire 兼容层打理：
+  * **播放侧**：改用 `--snd-command "paplay --raw --rate=22050 --channels=1 --format=s16le"`，实现语音提示与音乐的完美叠播混合，解决破音。
+  * **录音侧**：改用 `--mic-command "parec --raw --rate=16000 --channels=1 --format=s16le"`。PipeWire 会自动且高效地处理降采样并与所有应用共享声卡。不仅彻底根治了 Squeezelite 的没声音问题，还干掉了笨重的 `sox`，大幅降低 CPU 负载。
 
 ### 4. 麦克风增益悖论：修复“吼叫唤醒”与“30秒卡顿死锁”
 * **问题**：必须大喊才能唤醒；但远处的电视杂音却被清晰收录，导致语音管家卡死 30 秒。
@@ -275,7 +278,7 @@ systemctl --user restart sherpa-onnx-tts
 > [!WARNING]
 > **遇到 `No journal files were found.` 报错怎么办？**
 > 
-> 在树莓派或 Debian 系统上，如果执行 `journalctl --user` 时提示找不到日志，通常是因为普通用户不在 `systemd-journal` 权限组，或者系统未开启日志持久化。你有两种解决方案：
+> 在树莓派或 Debian 系统上，如果执行 `journalctl --user` 时提示找不到日志，通常是因为普通用户不在 `systemd-journal` 权限组，或者系统未开启日志持久化(为了速度，日志只放在内存中，重启后就没了)。你有两种解决方案：
 > 
 > **方案 A：一劳永逸法（推荐）**
 > 开启日志持久化，并赋予 `player` 用户读取权限。修好后就能正常使用前面介绍的所有 `journalctl --user` 命令。
