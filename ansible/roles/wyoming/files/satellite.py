@@ -879,7 +879,7 @@ class WakeStreamingSatellite(SatelliteBase):
         
         if settings.vad.enabled:
             import math
-            from wyoming.ring_buffer import RingBuffer
+            from pyring_buffer import RingBuffer
             self.vad = SileroVad(
                 threshold=settings.vad.threshold, trigger_level=settings.vad.trigger_level
             )
