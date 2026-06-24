@@ -91,7 +91,46 @@ def main():
         # 3.2 等待网络与 LMS 服务器就绪
         # ============================================
         import socket
+        from PIL import Image, ImageDraw, ImageFont
+
         logger.info(f"等待网络和 LMS 服务器 ({lms_params['host_ip']}:{lms_params['host_port']}) 就绪...")
+        
+        # 准备“网络等待”画面
+        device = display_ctx["device"]
+        w = display_ctx["width"]
+        h = display_ctx["height"]
+        
+        boot_cfg = cfg["ui"].get("boot_animation", {})
+        wait_text = boot_cfg.get("network_wait_text", "SYSTEM BOOTING... WAITING FOR SERVER")
+        wait_color = tuple(boot_cfg.get("network_wait_color", [200, 50, 50]))
+        
+        wait_pos = boot_cfg.get("network_wait_pos", None)
+        
+        try:
+            # 获取全局字体
+            global_cfg = cfg["ui"].get("global", {})
+            font_path = global_cfg.get("font_main", "./resources/PingFang-SC-Regular.ttf")
+            # Convert to absolute path if needed, but it should be handled if relative to PWD
+            # Wait, `ui_config_parser` doesn't resolve paths. main.py is run from ts_app_dir.
+            font = ImageFont.truetype(font_path, 24)
+        except Exception:
+            font = ImageFont.load_default()
+            
+        wait_img = Image.new("RGB", (w, h), (0, 0, 0))
+        draw = ImageDraw.Draw(wait_img)
+        
+        if wait_pos is None:
+            try:
+                bbox = draw.textbbox((0,0), wait_text, font=font)
+                tw = bbox[2] - bbox[0]
+                th = bbox[3] - bbox[1]
+            except AttributeError:
+                tw, th = draw.textsize(wait_text, font=font)
+            wait_pos = ((w - tw) // 2, (h - th) // 2)
+            
+        draw.text(wait_pos, wait_text, font=font, fill=wait_color)
+        device.show_image(wait_img)
+
         while True:
             try:
                 with socket.create_connection((lms_params["host_ip"], lms_params["host_port"]), timeout=2.0):

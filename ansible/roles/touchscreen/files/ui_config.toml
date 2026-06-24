@@ -19,6 +19,9 @@ duration_ms = 2000
 eye_color = [255, 30, 30]
 max_radius = 350
 audio_file = "./boot.wav"
+network_wait_text = "SYSTEM BOOTING... WAITING FOR SERVER"
+network_wait_color = [200, 50, 50]
+network_wait_pos = [60, 240]
 
 # ==========================================
 # 2. 共享状态栏 (Status Bar)
