@@ -432,10 +432,11 @@ class VoiceSatelliteProtocol(APIServer):
         elif event_type == VoiceAssistantEventType.VOICE_ASSISTANT_INTENT_END:
             if data.get("continue_conversation") == "1":
                 self._continue_conversation = True
-            
-            # HA 通常会在 INTENT_END 或 TTS_END 阶段附带 TTS 文字
-            # 尝试提取文本内容，推送给 UI 做 synthesize 显示
-            tts_text = data.get("text") or data.get("response") or data.get("speech") or ""
+                
+        elif event_type == VoiceAssistantEventType.VOICE_ASSISTANT_TTS_START:
+            # 根据 Home Assistant 核心源码 assist_satellite.py:
+            # HA 会在 TTS_START 事件中发送 {"text": event.data["tts_input"]}
+            tts_text = data.get("text", "")
             if tts_text:
                 _send_ui_event("synthesize", text=tts_text)
                 
