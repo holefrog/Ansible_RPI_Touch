@@ -19,5 +19,5 @@ except Exception as e:
 payload = json.dumps({"event": "transcript", "text": text})
 print(f"[Wyoming Event] sending UDP: {payload}", file=sys.stderr)
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.sendto(payload.encode("utf-8"), ("127.0.0.1", 10701))
+sock.sendto(payload.encode("utf-8"), ("127.0.0.1", {{ va_ui_udp_port }}))
 '
