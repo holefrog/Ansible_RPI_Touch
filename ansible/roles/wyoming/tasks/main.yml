@@ -1,9 +1,0 @@
----
-# ansible/roles/wyoming/tasks/main.yml
-
-- import_tasks: setup.yml
-- import_tasks: porcupine.yml
-- import_tasks: whisper.yml
-- import_tasks: piper.yml
-- import_tasks: satellite.yml
-- import_tasks: service.yml

@@ -23,5 +23,5 @@
       tags: ['bluetooth']
     - role: touchscreen
       tags: ['touchscreen']
-    - role: wyoming
-      tags: ['wyoming']
+    - role: voiceassistant
+      tags: ['voiceassistant']

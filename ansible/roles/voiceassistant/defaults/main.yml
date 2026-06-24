@@ -27,4 +27,4 @@ va_tts_vocoder_url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/voc
 va_ui_udp_port: 10701
 
 # 用户运行时目录（PipeWire/Pulse socket 所在位置）
-va_user_runtime_dir: "{{ user_runtime_dir }}"
+va_user_runtime_dir: "{{ mediaplayer_runtime_dir }}"
