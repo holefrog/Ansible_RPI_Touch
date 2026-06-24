@@ -17,7 +17,7 @@ font_icon = "./resources/MaterialIcons-Regular.ttf" # 主图标库 (MDI)
 enabled = true
 duration_ms = 2000
 eye_color = [255, 30, 30]
-max_radius = 80
+max_radius = 350
 audio_file = "./boot.wav"
 
 # ==========================================
