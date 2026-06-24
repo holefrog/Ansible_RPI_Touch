@@ -17,6 +17,7 @@
       - build-essential
       - cmake
       - libffi-dev
+      - libmpv1
     state: present
 
 - name: Create voiceassistant base directory

@@ -38,11 +38,11 @@
         report: |
           ===== SYSTEM SERVICES =====
           {% for res in system_status.results %}
-          {% set icon = '🔴' if res.stdout == 'inactive' else ('🟢' if res.stdout == 'active' else '🟡') %}
+          {% set icon = '🟢' if res.stdout == 'active' else '🔴' %}
           {{ '%-25s' | format(res.item) }}: {{ icon }} {{ res.stdout }}
           {% endfor %}
           ===== USER SERVICES =====
           {% for res in user_status.results %}
-          {% set icon = '🔴' if res.stdout == 'inactive' else ('🟢' if res.stdout == 'active' else '🟡') %}
+          {% set icon = '🟢' if res.stdout == 'active' else '🔴' %}
           {{ '%-25s' | format(res.item) }}: {{ icon }} {{ res.stdout }}
           {% endfor %}
