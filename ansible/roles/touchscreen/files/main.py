@@ -81,6 +81,12 @@ def main():
         # ============================================
         touch = ft6336u()
 
+        # ============================================
+        # 3.1 播放开机动画 (Terminator Boot)
+        # ============================================
+        from ui_boot_animation import play_boot_animation
+        play_boot_animation(display_ctx, cfg.get("boot_animation", {}))
+
         state_mgr = StateManager(pactl_env, lms_params, touch)
         state_mgr.start_background_threads()
 
