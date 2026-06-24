@@ -927,9 +927,15 @@ class WakeStreamingSatellite(SatelliteBase):
                 audio_bytes = chunk.audio
 
             if getattr(self, "vad_ignore_until", None) and time.monotonic() < self.vad_ignore_until:
-                if self.vad_buffer is not None:
-                    self.vad_buffer.put(audio_bytes)
+                # Do NOT put audio in vad_buffer during ignore period.
+                # Just drop it to prevent sending beep to HA.
                 return
+
+            if getattr(self, "vad_ignore_until", None):
+                # Ignore period just ended, clear any old junk in the buffer
+                if self.vad_buffer is not None:
+                    self.vad_buffer.clear()
+                self.vad_ignore_until = None
 
             if not self.vad(audio_bytes):
                 if self.vad_buffer is not None:
