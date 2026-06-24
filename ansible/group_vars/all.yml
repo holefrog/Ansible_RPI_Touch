@@ -17,3 +17,4 @@ system_timezone: "America/Vancouver"
 
 # Wyoming Voice Assistant Configuration
 whisper_initial_prompt: "开，打开，关，关上，关闭，客厅灯，小米台灯，现在几点了，大点声，小点声，暂停，继续播放，下一首，上一首。"
+lva_ha_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkZjhiZjFhMTM1N2U0NDkyOGM4MDZjYmRmZjkwMzg1NyIsImlhdCI6MTc4MjMzNzQ4MCwiZXhwIjoyMDk3Njk3NDgwfQ.LTbibqzvjXVJvKexLFSRtAXRzpK2qI__viHgOW4wdDc"

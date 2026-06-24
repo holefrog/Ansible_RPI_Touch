@@ -306,6 +306,18 @@ ESPHome API → HA Assist Pipeline → sherpa-onnx STT（10300）
 
 ## 6. Home Assistant 接入与配置
 
+### 步骤 0：部署前的必要准备 (Token 凭证)
+LVA 卫星端需要长期的 HA 访问凭证才能通过 ESPHome API 完成鉴权注册。
+1. 登录 Home Assistant Web 界面。
+2. 点击左下角你的用户名（个人资料），进入 **安全** 选项卡。
+3. 滚动到最底部，在 **长期访问令牌 (Long-Lived Access Tokens)** 中点击“创建令牌”，命名为 `Linux Voice Assistant`。
+4. 复制生成的长串 Token。
+5. 返回你的 Ansible 项目，打开 `ansible/group_vars/all.yml` (或你的加密 vault)，添加变量：
+   ```yaml
+   lva_ha_token: "eyJh..." # 在这里粘贴你的超长token
+   ```
+> **注意：** 必须在 Ansible 部署前配置此 Token，否则 LVA 服务启动后会因 401 Unauthorized 鉴权失败而无限重连。
+
 ### 重要警告：忽略 ESPHome Voice Satellite 自动发现向导
 
 LVA 通过 ESPHome API 接入后，HA 会自动发现该设备并弹出配置向导。**按需配置，不要选择"Full local processing"**（会在 J3455 虚拟机部署笨重插件，导致卡顿瘫痪）。
