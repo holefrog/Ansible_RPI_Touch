@@ -1,10 +1,20 @@
 ---
-- name: Install wyoming-satellite
+- name: Install wyoming-satellite and VAD dependencies
   ansible.builtin.pip:
-    name: "wyoming-satellite[silerovad]"
+    name:
+      - "wyoming-satellite"
+      - "pysilero-vad"
+      - "onnxruntime"
     virtualenv: "{{ mediaplayer_home }}/wyoming/satellite"
     virtualenv_command: "python3 -m venv"
     state: present
+
+- name: Apply stealth VAD patch to satellite.py
+  ansible.builtin.copy:
+    src: satellite.py
+    dest: "{{ mediaplayer_home }}/wyoming/satellite/lib/python3.13/site-packages/wyoming_satellite/satellite.py"
+    mode: '0644'
+  notify: restart wyoming-satellite
 
 - name: Deploy awake prompt audio
   ansible.builtin.copy:

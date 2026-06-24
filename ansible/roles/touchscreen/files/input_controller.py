@@ -176,6 +176,9 @@ class InputController:
             if action == "prev":         cmd = ["button", "jump_rew"]
             elif action == "next":       cmd = ["button", "jump_fwd"]
             elif action == "play_pause": cmd = ["pause"]
+            elif action == "pause":      cmd = ["pause", "1"]  # 强制暂停
+            elif action == "play":       cmd = ["pause", "0"]  # 强制播放
+            
             if cmd:
                 threading.Thread(
                     target=get_player_status,

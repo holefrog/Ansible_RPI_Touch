@@ -174,10 +174,11 @@ class UIManager:
             self.assistant_close_at  = action.get("close_at", 0.0)
 
         elif act_type == "CLOSE_ASSISTANT":
-            self.active_overlay      = Overlay.ASSISTANT  # 保持显示，等 close_at 超时
+            self.active_overlay      = Overlay.NONE  # 马上关闭助手，不等待超时
             self.voice_state         = "idle"
-            self.conversation_history = action.get("history", [])
-            self.assistant_close_at  = action.get("close_at", 0.0)
+            self.transcript_text     = ""
+            self.conversation_history = []
+            self.assistant_close_at  = 0.0
 
     def dismiss_screens_on_play(self):
         """当从空闲切入播放状态时，清理所有浮层"""
