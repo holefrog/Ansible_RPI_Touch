@@ -50,6 +50,9 @@ def play_boot_animation(display_ctx, config):
     height = display_ctx["height"]
     center = (width // 2, height // 2)
 
+    # Immediately flush a black screen to fix the white bar
+    device.show_image(Image.new("RGB", (width, height), (0, 0, 0)))
+
     start_time = time.monotonic()
     end_time = start_time + (duration_ms / 1000.0)
 
