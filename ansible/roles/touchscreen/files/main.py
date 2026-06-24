@@ -66,20 +66,13 @@ def main():
             display_config=cfg["display"]
         )
 
-        pactl_env = setup_pactl_env()
-        init_airplay_pipe(cfg["airplay"]["metadata_pipe"])
-
-        screen_saver = ScreenSaver(
-            display_ctx,
-            idle_dim_timeout=cfg["screensaver"]["idle_dim_timeout"],
-            media_dim_timeout=cfg["screensaver"]["media_dim_timeout"],
-            off_timeout=cfg["screensaver"]["off_timeout"]
-        )
-
         # ============================================
         # 3. 初始化触摸屏 & UI 渲染器
         # ============================================
-        touch = ft6336u()
+        try:
+            touch = ft6336u()
+        except NameError:
+            touch = None
 
         # ============================================
         # 3.1 播放开机动画 (Terminator Boot)
@@ -88,7 +81,24 @@ def main():
         play_boot_animation(display_ctx, cfg["ui"].get("boot_animation", {}))
 
         # ============================================
-        # 3.2 等待网络与 LMS 服务器就绪
+        # 3.2 准备底层环境 (后台并行初始化)
+        # ============================================
+        # setup_pactl_env and init_airplay_pipe shouldn't block the screen
+        pactl_env = setup_pactl_env()
+
+        airplay_cfg = cfg.get("airplay", {})
+        pipe_path = airplay_cfg.get("metadata_pipe", "/tmp/shairport-sync-metadata")
+        init_airplay_pipe(pipe_path)
+        
+        screen_saver = ScreenSaver(
+            display_ctx,
+            idle_dim_timeout=cfg["screensaver"]["idle_dim_timeout"],
+            media_dim_timeout=cfg["screensaver"]["media_dim_timeout"],
+            off_timeout=cfg["screensaver"]["off_timeout"]
+        )
+
+        # ============================================
+        # 3.3 等待网络与 LMS 服务器就绪
         # ============================================
         import socket
         from PIL import Image, ImageDraw, ImageFont
