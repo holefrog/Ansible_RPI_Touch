@@ -43,8 +43,15 @@
 这套架构实现了四个完美的指标：**0 隐私泄露（全断网）、0 日常额外功耗增加、不需要独立显卡/高性能服务器、不牺牲 UI 体验。**
 
 ### 模块划分与数据流向
-* **后台守护进程**：`wyoming-porcupine1` (10400 唤醒)，STT服务 (10300)，TTS服务 (10200)，`wyoming-satellite` (10700 大管家)。
-* **Python 前端 UI 层**：`assistant_listener.py` (UDP 监听)，`ui_screen_assistant.py` (动画渲染)，`main.py` (逻辑融合)。
+* **后台守护进程（Ansible 自动部署）**：
+  * `wyoming-porcupine1`：**10400** 端口（轻量级本地唤醒）。
+  * `sherpa-onnx-stt` (原 Whisper)：**10300** 端口（本地极速 STT，SenseVoice-int8 模型全量驻留内存）。
+  * `sherpa-onnx-tts` (原 Piper)：**10200** 端口（本地极速 TTS，非自回归流匹配算法）。
+  * `wyoming-satellite`：**10700** 端口（大管家，负责串联录音设备、扬声器与唤醒引擎，并支持 `--awake-wav` 听觉反馈）。
+* **Python 前端 UI 层**：
+  * `assistant_listener.py`：监听本机 **10701** 端口的 UDP Socket 钩子，接收卫星进程信号。
+  * `ui_screen_assistant.py`：使用 PIL 绘制“呼吸灯、雷达扫描、声波”等炫酷 AI 交互动画。
+  * `main.py`：融合业务逻辑，与底层硬件播放器实现精确的 Pause / Play 同步拦截。
 
 ---
 
@@ -82,10 +89,16 @@ Session 1 录了 15 秒（HA pipeline 全局超时上限）。由于 HA 端的 V
 #### 问题 4：Satellite 轮询断连 ⚠️
 HA 每 8 秒对 satellite 进行轮询断连重连，虽不影响整体功能，但易导致边界条件下的事件丢失。
 
-### 阶段性紧急修复
-1. 修复 Piper：`pip install unicode-rbnf`。
-2. 给 Whisper 启用 Silero VAD 过滤：在服务中加上 `--vad-filter`，纯噪音在 1 秒内被跳过。
-3. 调整 HA 端 "Finished speaking detection" 为 "Aggressive"。
+### 阶段性紧急修复（历史档案）
+针对第一代架构，我们当时采取了以下紧急修复：
+1. **修复 Piper**：由于缺少依赖，我们通过 SSH 进入物理机虚拟环境补充安装：
+   ```bash
+   ssh player@192.168.50.207
+   /home/player/wyoming/piper/bin/pip install unicode-rbnf
+   systemctl --user restart wyoming-piper
+   ```
+2. **给 Whisper 启用内置 VAD 过滤**：在 `wyoming-whisper.service` 的 ExecStart 中加上 `--vad-filter` 参数。这会让 Whisper 在推理前先用 Silero VAD 过滤掉静音段，纯噪音/静音的音频会被直接跳过，耗时从 2 分钟降到 < 1 秒。
+3. **调整 HA 截断灵敏度**：将 HA 端 "Finished speaking detection" 调为 **Aggressive** (0.25 秒静音即截断)。
 
 ---
 
@@ -199,10 +212,10 @@ intents:
 > 新版 HA 会自动发现网络里的 `wyoming-satellite` 并弹出 **Voice Satellite setup**。**请直接无视/关闭此向导！** 如果误选“Full local processing”，HA 将在 J3455 虚拟机里部署笨重的插件导致卡顿瘫痪。
 
 ### 1. 手动接入 Wyoming 服务 (三大器官)
-进入 HA 的 **配置 -> 设备与服务 -> 添加集成**，搜索 **Wyoming Protocol**，连续添加：
-1. **添加大脑 (STT)**：填树莓派 IP，端口填对应的 Sherpa-ONNX STT 端口。
-2. **添加嘴巴 (TTS)**：填树莓派 IP，端口填对应的 Sherpa-ONNX TTS 端口。
-3. **添加身体 (Satellite)**：填树莓派 IP，端口填 `10700`。*(注：添加后 HA 会弹出 Voice Satellite setup 向导，请直接点击右上角 X 关闭)*
+进入 HA 的 **配置 -> 设备与服务 -> 添加集成**，搜索 **Wyoming Protocol**，连续添加三次：
+1. **添加大脑 (STT)**：主机填树莓派 IP（如 `192.168.50.207`），端口填 `10300`。*(注：HA 可能会自动识别出底层引擎的名字，这是正常现象)*
+2. **添加嘴巴 (TTS)**：主机填树莓派 IP（如 `192.168.50.207`），端口填 `10200`。
+3. **添加身体 (Satellite)**：主机填树莓派 IP（如 `192.168.50.207`），端口填 `10700`。*(注：点确定添加 10700 后，HA 会立刻弹出 Voice Satellite setup 的向导。此时请直接点击右上角的 X 关闭它)*
 
 ### 2. 防卡顿与截断的参数调整（关键！）
 在 HA 的对应设备设置界面，请务必修改以下音频处理参数：
@@ -222,3 +235,81 @@ intents:
 创建完成后，点击该助手右上角的三个点，选择 **设为默认 (Set as preferred)**。"Raspberry Pi Local Edge" 名字旁会出现五角星。
 
 至此，全本地离线版、高性能、抗干扰的智能语音终端彻底竣工！
+
+---
+
+## 八、 日常维护与日志调试指南
+
+如果在运行过程中遇到唤醒无响应、无法连通等问题，需要登录树莓派排查日志。
+
+> [!IMPORTANT]
+> **关键提醒：Wyoming 所有后台守护进程均部署为「用户级」 (User-level) Systemd 服务**，而不是系统级服务。因此，你**不能**直接使用 `sudo systemctl` 或 `sudo journalctl`，必须以部署用户（如 `player`）的身份进行操作。
+
+### 1. 服务状态管理
+当你通过 SSH 登录树莓派后，使用 `--user` 参数来查看或重启相关服务：
+```bash
+# 查看大管家卫星服务的状态
+systemctl --user status wyoming-satellite
+
+# 重启 STT 和 TTS 推理引擎
+systemctl --user restart sherpa-onnx-stt
+systemctl --user restart sherpa-onnx-tts
+```
+
+### 2. 日志查阅技巧：实时与历史
+通过 `journalctl --user` 可以查阅这些服务的输出，这是排查问题的唯一信源：
+
+* **实时追踪（排查当前问题）**：加上 `-f` 参数滚动查看。
+  ```bash
+  journalctl --user -u wyoming-satellite -f
+  ```
+* **查阅历史日志（复盘故障）**：配合 `--since` 或 `--until` 过滤特定时间段，或者直接不加 `-f` 用上下键翻页。
+  ```bash
+  # 查看过去 10 分钟内的所有卫星日志
+  journalctl --user -u wyoming-satellite --since "10 minutes ago"
+  
+  # 查看昨天晚上的 STT 引擎日志
+  journalctl --user -u sherpa-onnx-stt --since "yesterday"
+  ```
+
+> [!WARNING]
+> **遇到 `No journal files were found.` 报错怎么办？**
+> 
+> 在树莓派或 Debian 系统上，如果执行 `journalctl --user` 时提示找不到日志，通常是因为普通用户不在 `systemd-journal` 权限组，或者系统未开启日志持久化。你有两种解决方案：
+> 
+> **方案 A：一劳永逸法（推荐）**
+> 开启日志持久化，并赋予 `player` 用户读取权限。修好后就能正常使用前面介绍的所有 `journalctl --user` 命令。
+> ```bash
+> # 1. 开启日志持久化并重启日志服务
+> sudo mkdir -p /var/log/journal
+> sudo systemctl restart systemd-journald
+> 
+> # 2. 把当前用户加入日志读取组
+> sudo usermod -aG systemd-journal player
+> ```
+> *⚠️ 注意：执行完毕后，你**必须断开当前的 SSH 连接**并重新登录树莓派，权限变更才会生效！*
+> 
+> **方案 B：Root 暴力法（免改配置立即查看）**
+> 如果你不想修改系统配置，也可以直接使用 `sudo` 读取系统的全局账本，并通过特殊的 `_SYSTEMD_USER_UNIT` 标签强行过滤出用户级服务的日志。
+> ```bash
+> # 查看所有三个核心服务的混合时间线（效果等同于前面的合并追踪命令）
+> sudo journalctl _SYSTEMD_USER_UNIT=wyoming-satellite.service _SYSTEMD_USER_UNIT=sherpa-onnx-stt.service _SYSTEMD_USER_UNIT=sherpa-onnx-tts.service --since "5 minutes ago"
+> ```
+
+### 3. 高阶排错法：跨服务追踪“时序 (Timeline)”
+语音助手的链路很长（本地唤醒 -> HA 录音 VAD -> 发回本地 STT -> HA 意图解析 -> 发回本地 TTS -> 本地混音播放）。当你感觉“响应很慢”或者“中间卡死了”时，**对比不同服务的日志时间戳**是查出真凶的唯一方法。
+
+你可以同时查看多个服务的日志，让它们按时间顺序合并输出：
+```bash
+journalctl --user -u wyoming-satellite -u sherpa-onnx-stt -u sherpa-onnx-tts --since "5 minutes ago"
+```
+
+**如何根据时序排查问题（以一次典型的 25 秒卡顿为例）：**
+1. **看唤醒点**：在日志中找到 `Porcupine 检测到 "bumblebee"` 的时间（例如 `20:40:45`），此时 `satellite` 会发送 `awake` 给 UI 界面。
+2. **看录音传输耗时**：向下找 STT 开始推理的日志（例如 `20:40:50`）。这中间差了 5 秒，说明前期的“流式录音 + HA端的 VAD 判定录音结束 + 网络回传给 STT” 消耗了 5 秒。
+3. **抓内鬼（查推理耗时）**：找 STT 输出识别结果的时间。如果 STT 从 `20:40:50` 开始，到 `20:43:09` 才输出结果，说明 **STT 模型陷入了幻觉死循环，这就是核心瓶颈**（参考上述的第一代 Whisper 灾难）。如果这里只花了 0.5 秒，说明 STT 很健康。
+4. **查后端与 TTS**：STT 输出文字后，找 TTS 开始接收文字的时间。如果差了很久，说明 Home Assistant 的网络连接或意图解析卡住了。
+5. **查物理播放**：找 TTS 生成完毕到喇叭出声的间隙。如果这里卡顿，通常是遇到了 `paplay` 的音频设备被抢占，或者底层锁死。
+
+> [!TIP]
+> **排错黄金法则**：不要凭感觉猜是“网络卡”还是“树莓派卡”。直接把一次对话中从唤醒到出声的所有时间戳列在一张表上，哪个环节花了最多的秒数，哪个模块就是需要调参（比如改 HA VAD、改增益、换引擎）的根源！
