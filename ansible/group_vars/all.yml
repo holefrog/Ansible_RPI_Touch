@@ -18,3 +18,4 @@ system_timezone: "America/Vancouver"
 # Linux Voice Assistant Configuration
 lva_ha_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkZjhiZjFhMTM1N2U0NDkyOGM4MDZjYmRmZjkwMzg1NyIsImlhdCI6MTc4MjMzNzQ4MCwiZXhwIjoyMDk3Njk3NDgwfQ.LTbibqzvjXVJvKexLFSRtAXRzpK2qI__viHgOW4wdDc"
 lva_ha_host: "192.168.50.236"
+lva_ha_port: 8123
