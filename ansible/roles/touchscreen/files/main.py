@@ -144,6 +144,9 @@ def main():
         
         pos1 = t1_cfg.get("pos")
         pos3 = t3_cfg.get("pos")
+        if not pos1 or not pos3:
+            logger.error("Missing pos in network_wait text configs. Exiting.")
+            sys.exit(1)
 
         wait_color = tuple(boot_cfg["network_wait_color"])
         font_path = global_cfg["font_main"]
@@ -158,25 +161,8 @@ def main():
         wait_img = Image.new("RGB", (w, h), (0, 0, 0))
         draw = ImageDraw.Draw(wait_img)
 
-        def get_text_size(text, font):
-            try:
-                bbox = draw.textbbox((0, 0), text, font=font)
-                return bbox[2] - bbox[0], bbox[3] - bbox[1]
-            except AttributeError:
-                return draw.textsize(text, font=font)
-
-        w1, h1 = get_text_size(wait_text1, font1)
-        w3, h3 = get_text_size(wait_text3, font3)
-        
-        h2 = 20 # Empty line height
-        total_h = h1 + h2 + h3
-        auto_start_y = (h - total_h) // 2
-        
-        draw_pos1 = tuple(pos1) if pos1 else ((w - w1) // 2, auto_start_y)
-        draw_pos3 = tuple(pos3) if pos3 else ((w - w3) // 2, auto_start_y + h1 + h2)
-
-        draw.text(draw_pos1, wait_text1, font=font1, fill=wait_color)
-        draw.text(draw_pos3, wait_text3, font=font3, fill=wait_color)
+        draw.text(tuple(pos1), wait_text1, font=font1, fill=wait_color)
+        draw.text(tuple(pos3), wait_text3, font=font3, fill=wait_color)
 
         device.show_image(wait_img)
 
