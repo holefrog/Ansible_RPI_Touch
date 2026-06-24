@@ -18,6 +18,8 @@ ExecStart={{ mediaplayer_home }}/wyoming/satellite/bin/python3 -m wyoming_satell
     --tts-start-command {{ mediaplayer_home }}/wyoming/satellite/tts-start.sh \
     --tts-stop-command {{ mediaplayer_home }}/wyoming/satellite/done.sh \
     --error-command {{ mediaplayer_home }}/wyoming/satellite/done.sh \
+    --vad \
+    --vad-wake-word-timeout 5 \
     --debug
 Restart=always
 RestartSec=3
