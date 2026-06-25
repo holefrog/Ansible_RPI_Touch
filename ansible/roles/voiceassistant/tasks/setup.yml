@@ -40,6 +40,13 @@
     update: yes
     force: no
 
+- name: Overwrite with modified satellite.py for UI UDP events
+  ansible.builtin.copy:
+    src: satellite.py
+    dest: "{{ lva_repo_dest }}/linux_voice_assistant/satellite.py"
+    owner: "{{ mediaplayer_user }}"
+    mode: '0644'
+
 - name: Run LVA setup script (builds venv + downloads OWW models)
   ansible.builtin.command:
     cmd: python3 script/setup --cxxflags="-O1 -g0" --makeflags="-j4"

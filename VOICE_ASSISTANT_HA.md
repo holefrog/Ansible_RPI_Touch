@@ -641,17 +641,55 @@ LVA 使用 ESPHome API，该协议设计为长期稳定连接，无 Wyoming ping
 ### 唤醒时的播放器控制流（Python 层）
 
 ```
-LVA 检测到唤醒词 "ok_nabu"
-    ↓
-执行 LVA_ON_WAKE_WORD → awake.sh → UDP 信号发至 10701
-    ↓
-assistant_listener.py 接收
-    ↓
-main.py → 向 Squeezelite/LMS 发送 pause 命令
-         + 弹出语音蒙版
+sequenceDiagram
+    autonumber
+    participant Mic as 麦克风 (PipeWire)
+    participant LVA as LVA (satellite.py)
+    participant UI as Touchscreen UI
+    participant HA as Home Assistant
+    participant STT as Sherpa-ONNX (STT)
+    participant TTS as Sherpa-ONNX (TTS)
+    
+    Note over Mic, LVA: 1. 待机状态
+    Mic->>LVA: 源源不断地输入本地音频
+    LVA->>LVA: OpenWakeWord 实时比对唤醒词
+    
+    Note over LVA, UI: 2. 触发唤醒 (Wake up)
+    LVA->>LVA: 听到 "ok nabu"
+    LVA->>UI: 运行 awake.sh -> UDP {"event": "awake"}
+    UI->>UI: 屏幕显示“录音中/倾听”动画
+    LVA->>HA: 通过 ESPHome API 请求 run_pipeline
+    
+    Note over LVA, STT: 3. 音频流式传输 & 识别
+    LVA->>HA: 开始流式上传语音 ("打开客厅灯")
+    HA->>STT: 路由语音流至 wyoming-stt
+    STT->>STT: VAD 判定用户说话结束 (Relaxed)
+    STT->>HA: 返回文本 "打开客厅灯"
+    
+    Note over HA, UI: 4. 识别完成 (Transcript)
+    HA->>LVA: 返回 STT_END 事件 (含文本)
+    LVA->>UI: 运行 transcript.sh -> UDP {"event": "transcript", "text": "打开客厅灯"}
+    UI->>UI: 屏幕上刷出用户说的话
+    
+    Note over HA, HA: 5. 意图执行 (Intent)
+    HA->>HA: NLU 匹配，执行“开灯”动作
+    HA->>HA: 生成回答文本: "好的，已打开客厅灯"
+    
+    Note over HA, UI: 6. 语音合成与文字推送 (TTS Start / Synthesize)
+    HA->>LVA: 返回 TTS_START 事件 (含回答文本)
+    LVA->>UI: 运行 tts-start.sh -> UDP {"event": "tts-start"}
+    LVA->>UI: 运行 synthesize.sh -> UDP {"event": "synthesize", "text": "好的，已打开客厅灯"}
+    UI->>UI: 屏幕刷出助手回答的文字内容
+    HA->>TTS: 请求 wyoming-tts 合成声音
+    TTS->>HA: 返回音频数据
+    
+    Note over HA, LVA: 7. 音频播放
+    HA->>LVA: 下发音频流
+    LVA->>Mic: 通过 PipeWire 播放声音
+    
+    Note over LVA, UI: 8. 流程结束 (Done)
+    LVA->>LVA: 播报结束
+    LVA->>UI: 运行 done.sh -> UDP {"event": "done"}
+    UI->>UI: 延时后，屏幕恢复时钟/音乐待机画面
 
-语音交互完成，LVA 执行 LVA_ON_TTS_END → done.sh → UDP 10701
-    ↓
-main.py → 发送 play 命令恢复播放
-         + 立即关闭语音蒙版
 ```
