@@ -38,7 +38,7 @@
     dest: "{{ lva_repo_dest }}"
     version: main
     update: yes
-    force: no
+    force: yes
 
 - name: Overwrite with modified satellite.py for UI UDP events
   ansible.builtin.copy:
