@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # resources/ts/state_manager.py
-# v2
+# v3
 
 import time
 import threading
 import logging
 
-from query_source import get_high_priority_source
+from query_source import get_high_priority_source, get_player_status, extract_result_field
 from query_system import get_system_info, get_services_status
 from state_handlers import (
     handle_airplay_state,
@@ -115,6 +115,27 @@ class StateManager:
         """安全获取当前语音会话状态"""
         with self._app_state_lock:
             return self._voice_session
+
+    def query_should_resume(self) -> bool:
+        """
+        语音会话 done 后，判断是否需要恢复播放。
+        只有 LMS 当前处于 pause 状态（即唤醒时被 touchscreen 自己暂停的）才恢复。
+        play  → HA 已切曲/已播放，LMS 自己在播，不需要再 resume。
+        stop  → HA 已停止播放，不应恢复。
+        查询失败 → 保守起见不恢复。
+        """
+        try:
+            error, result = get_player_status(
+                ["mode", "?"],
+                self.lms_params["host_ip"],
+                self.lms_params["host_port"],
+                self.lms_params["player_id"]
+            )
+            playback_mode = extract_result_field(result, "_mode", default="stop")
+            return playback_mode == "pause"
+        except Exception as e:
+            logger.warning(f"query_should_resume 查询失败，保守跳过恢复: {e}")
+            return False
 
     def get_touch_event(self):
         """安全的消费接口：获取并清空最新触摸事件"""
