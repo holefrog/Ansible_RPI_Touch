@@ -72,14 +72,6 @@
     state: mounted
   ignore_errors: yes
 
-- name: Ensure systemd journald is configured to write logs to disk (persistent)
-  become: yes
-  ansible.builtin.lineinfile:
-    path: /etc/systemd/journald.conf
-    regexp: '^#?Storage='
-    line: 'Storage=persistent'
-  notify: Restart systemd-journald
-
 - name: Disable and remove dphys-swapfile to eliminate SD card paging I/O
   become: yes
   ansible.builtin.apt:
