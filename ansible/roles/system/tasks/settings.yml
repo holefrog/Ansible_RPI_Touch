@@ -72,20 +72,13 @@
     state: mounted
   ignore_errors: yes
 
-- name: Install log2ram via standard apt to maximize performance by avoiding SD card log writes
+- name: Ensure systemd journald is configured to write logs to disk (persistent)
   become: yes
-  ansible.builtin.apt:
-    name: log2ram
-    state: present
-    update_cache: yes
-
-- name: Enable log2ram service
-  become: yes
-  ansible.builtin.systemd:
-    name: log2ram
-    enabled: yes
-    state: started
-  ignore_errors: yes
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/journald.conf
+    regexp: '^#?Storage='
+    line: 'Storage=persistent'
+  notify: Restart systemd-journald
 
 - name: Disable and remove dphys-swapfile to eliminate SD card paging I/O
   become: yes
