@@ -28,3 +28,9 @@ va_ui_udp_port: 10701
 
 # 用户运行时目录（PipeWire/Pulse socket 所在位置）
 va_user_runtime_dir: "{{ mediaplayer_runtime_dir }}"
+
+# LVA 运行调优参数
+lva_mic_noise_suppression: 2
+lva_refractory_seconds: 0.5
+lva_continue_conversation_delay: 0.5
+lva_max_recording_duration: 15
