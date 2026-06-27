@@ -722,7 +722,28 @@ class VoiceSatelliteProtocol(APIServer):
         _send_ui_event("tts-start")  # → UI 显示 TTS 播放状态
 
         self.state.active_wake_words.add(self.state.stop_word.id)
-        self.state.tts_player.play(self._tts_url, done_callback=self._tts_finished)
+        
+        # 确保回调一定会执行，防止死锁导致无法再次唤醒
+        fallback_timer = None
+        def _safe_tts_finished():
+            nonlocal fallback_timer
+            if fallback_timer:
+                fallback_timer.cancel()
+            if getattr(self, '_tts_finished_called', False):
+                return
+            self._tts_finished_called = True
+            self._tts_finished()
+
+        self._tts_finished_called = False
+        # 如果 10 秒后回调没触发，强制结束
+        fallback_timer = threading.Timer(10.0, _safe_tts_finished)
+        fallback_timer.start()
+
+        try:
+            self.state.tts_player.play(self._tts_url, done_callback=_safe_tts_finished)
+        except Exception as e:
+            _LOGGER.error(f"tts_player.play 抛出异常: {e}")
+            _safe_tts_finished()
 
     def duck(self) -> None:
         _LOGGER.debug("Ducking music")
@@ -748,7 +769,7 @@ class VoiceSatelliteProtocol(APIServer):
                 if self.state.muted:
                     _LOGGER.debug("Skipping continued conversation: muted")
                     self._pipeline_active = False
-                    self.unduck()
+                    threading.Thread(target=self.unduck, daemon=True).start()
                     return
                 self.send_messages([VoiceAssistantRequest(start=True)])
                 self._is_streaming_audio = True
@@ -757,7 +778,7 @@ class VoiceSatelliteProtocol(APIServer):
             threading.Timer(self.state.continue_conversation_delay, _start_continued_conversation).start()
         else:
             self._continue_conversation = False
-            self.unduck()
+            threading.Thread(target=self.unduck, daemon=True).start()
 
         _LOGGER.debug("TTS response finished")
         _send_ui_event("done")  # → UI 关闭蒙版 + 恢复音乐
