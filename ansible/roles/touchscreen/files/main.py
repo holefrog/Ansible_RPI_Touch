@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # resources/ts/main.py
-# v6
+# v8
 
 import time
 import sys
@@ -228,19 +228,14 @@ def main():
 
                 # 消费完毕：如果是结束状态，且原先在播放，则恢复播放
                 if evt_type in ("timeout", "error"):
-                    # 超时/错误说明语音助手未识别到任何指令，无条件恢复
+                    # 超时/错误：语音助手未识别到指令，无条件恢复
                     if voice_session.was_playing_before_voice:
                         input_ctrl.execute_player_cmd(player_state, "play")
                 elif evt_type == "done":
-                    # done 说明 HA 执行了某条指令，需查询 LMS 当前状态再决定
-                    # pause → touchscreen 自己暂停的，正常恢复
-                    # play  → HA 已切曲/已播放，LMS 自己在播，跳过
-                    # stop  → HA 已停止播放，跳过
+                    # done：HA 执行了指令，由 StateManager 判断是否应恢复
                     if voice_session.was_playing_before_voice:
-                        if state_mgr.query_should_resume():
+                        if state_mgr.should_resume_after_voice():
                             input_ctrl.execute_player_cmd(player_state, "play")
-                        else:
-                            logger.info("语音结束：LMS 非暂停状态（HA 已介入），跳过恢复播放")
 
             # ── 播放状态判断 ──────────────────────────────────────────────────
             is_playing = player_state is not None and not getattr(player_state, "is_clock", False)
