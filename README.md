@@ -30,6 +30,11 @@ The entire system is deployed via **fully automated, idempotent Ansible playbook
 - [Development & Architecture](#development--architecture)
   - [Development & Debugging](#development--debugging)
   - [Architecture & Performance Optimization](#architecture--performance-optimization)
+- [🎙️ Voice Assistant](#️-voice-assistant)
+  - [Technical Breakthrough: Hooking LVA Source Code](#technical-breakthrough-hooking-lva-source-code)
+  - [System Selection & Hard-Won Lessons](#system-selection--hard-won-lessons)
+  - [Architecture Overview](#architecture-overview)
+  - [Voice Assistant UI](#voice-assistant-ui)
 
 ---
 
@@ -56,6 +61,13 @@ The entire system is deployed via **fully automated, idempotent Ansible playbook
   <img src="UI/Info.png" width="32%" alt="System Info" />
 </p>
 
+### 🎙️ Voice Assistant
+<p align="center">
+  <img src="UI/Voice-Assistant.png" width="40%" alt="Voice Assistant UI" />
+</p>
+
+> Real-time conversation overlay: user speech appears on the right (blue bubbles), assistant replies on the left (gray bubbles). The status bar shows the current pipeline state (listening → processing → responding).
+
 ---
 
 ## ✨ Core Features
@@ -73,6 +85,12 @@ The entire system is deployed via **fully automated, idempotent Ansible playbook
 * Uses the **Waveshare WM8960 Sound Board** for high-fidelity I2S hardware decoding output.
   > **💡 Exclusive Driver Optimization**: Since the official Linux driver was designed specifically for the dual-mic HAT version (12.288MHz crystal), using it directly on the single-mic Audio Board version (24MHz crystal) causes severe clock mismatches and pure white noise during recording. We reverse-engineered and generated a custom native Linux driver `wm8960-audio-card.dtbo` specifically for this 24MHz hardware. Ansible will **automatically deploy** this driver and configure the correct ALSA audio routing. For detailed troubleshooting records and technical details, please see [RECORD.md](documents/WM8960/RECORD.md).
 * Independent volume control and automatic priority management.
+
+### 🎙️ Offline Local Voice Assistant
+* **100% Privacy**: Fully offline, no cloud AI services, no data leaves the device.
+* **Chinese NLU**: Natural Chinese commands control smart home devices via Home Assistant.
+* **Zero-Idle Overhead**: OpenWakeWord detection adds less than 2% CPU at standby.
+* **Technical Breakthrough**: Voice Assistant UI is driven by **patching LVA's `satellite.py` source code** to inject UDP event hooks — enabling real-time conversation display on the touchscreen without modifying the upstream LVA protocol layer.
 
 ---
 
@@ -298,6 +316,100 @@ Since the Raspberry Pi 4B has 4GB of RAM (which is more than enough for this pro
    - `vm.dirty_ratio = 20` & `vm.dirty_background_ratio = 10`: Safely buffers as many disk write operations as possible in RAM (while balancing the risk of sudden power loss), allowing the kernel to flush them to the SD card silently in the background.
 
 After these optimizations, AI engines reside fully in memory, high-frequency I/O occurs entirely in RAM, and the remaining memory is pushed to its limits by the Linux Page Cache—bringing the player's fluidity close to the physical limit!
+
+---
+
+## 🎙️ Voice Assistant
+
+This project integrates a fully **offline, local** intelligent voice assistant, enabling natural Chinese voice control of Home Assistant smart home devices — all running on the Raspberry Pi 4B itself, with zero cloud dependency.
+
+### Technical Breakthrough: Hooking LVA Source Code
+
+The Voice Assistant UI — the real-time conversation overlay shown on the touchscreen — **could not be achieved through LVA's standard configuration alone**.
+
+LVA (Linux Voice Assistant) provides event callback scripts (`LVA_ON_WAKE_WORD`, `LVA_ON_STT_END`, `LVA_ON_TTS_START`, `LVA_ON_TTS_END`) that fire at key pipeline stages. However, these hooks carry **no text payload** for the transcript or TTS response, making it impossible to display conversation content on-screen through official means.
+
+**Our breakthrough: we directly patched LVA's `satellite.py` source code**, injecting UDP sends to port `10701` at the precise internal points where text data is available inside the pipeline. This allows the Python UI layer to receive structured JSON events — including the recognized speech text and the assistant's reply — and render them as chat bubbles in real time.
+
+```
+LVA satellite.py (patched)
+    ├─ on wake word  →  UDP {"event": "awake"}
+    ├─ on STT end    →  UDP {"event": "transcript", "text": "关闭小米台灯"}
+    ├─ on TTS start  →  UDP {"event": "tts-start"}
+    ├─ on synthesize →  UDP {"event": "synthesize", "text": "小米台灯已关闭"}
+    └─ on TTS end    →  UDP {"event": "done"}
+                              ↓
+                   assistant_listener.py (port 10701)
+                              ↓
+                   StateManager → UIManager
+                              ↓
+                   Real-time chat bubble overlay on touchscreen
+```
+
+The patched `satellite.py` is version-controlled in `roles/voiceassistant/files/` and deployed automatically by Ansible, ensuring full reproducibility.
+
+---
+
+### System Selection & Hard-Won Lessons
+
+The final architecture was reached only after thoroughly evaluating and rejecting two earlier stacks.
+
+#### Stage 1: wyoming-satellite + Whisper + Piper (Abandoned)
+
+The initial design followed the mainstream Home Assistant satellite pattern.
+
+**Why it failed:**
+
+| Problem | Root Cause | Verdict |
+|---------|-----------|---------|
+| **"2-second disconnect" loop** | Wyoming protocol ping/pong race condition between HA and satellite — a known protocol-layer bug, unfixable by tuning | Fatal |
+| **Whisper hallucination deadlock** | Autoregressive decoder loops on silence/noise, generating prompt text for 2+ minutes on ARM | Unusable on RPi |
+| **Piper Chinese TTS silent output** | `ModuleNotFoundError: No module named 'unicode_rbnf'` — Chinese phonemization fails, outputs zero-byte WAV | Broken |
+| **Both projects archived** | `wyoming-satellite` archived Jan 27 2026; `wyoming-piper` also unmaintained | No future |
+
+#### Stage 2: LVA + Sherpa-ONNX (Current — Stable)
+
+LVA abandons the Wyoming protocol entirely and uses the **ESPHome native API** — eliminating the ping/pong timeout at the protocol level. STT and TTS run locally on the RPi via **Sherpa-ONNX**, bypassing the J3455 VM's lack of AVX/AVX2 (Whisper on J3455 takes 5–10 s per short phrase).
+
+| Component | Choice | Reason |
+|-----------|--------|--------|
+| Satellite | LVA (ESPHome API) | Stable connection; actively maintained by OHF |
+| Wake word | OpenWakeWord `ok_nabu` | Built into LVA; open source; no API key |
+| STT | Sherpa-ONNX SenseVoice-int8 | CTC architecture; no hallucination deadlock; RAM-resident |
+| TTS | Sherpa-ONNX Matcha-Icefall + Vocos | Pure C++; natural Chinese voice; no dependency hell |
+
+**Core design principle**: pause music on wake word → CPU goes full-throttle for inference → resume after TTS. This eliminates the need for AEC entirely and keeps idle overhead under 2%.
+
+---
+
+### Architecture Overview
+
+```
+Microphone (PipeWire)
+    ↓
+LVA (OpenWakeWord — detects "ok nabu")
+    ├─ patched satellite.py → UDP 10701 → Touchscreen UI (chat bubbles)
+    └─ ESPHome API → Home Assistant Assist Pipeline
+                          ├─ Wyoming Integration → Sherpa-ONNX STT (port 10300)
+                          ├─ NLU intent matching (custom_sentences zh_CN)
+                          └─ Wyoming Integration → Sherpa-ONNX TTS (port 10200)
+                                                        ↓
+                                               LVA → PipeWire → Speaker
+```
+
+All components are deployed as user-level Systemd services (`player` user) via Ansible's `voiceassistant` role.
+
+---
+
+### Voice Assistant UI
+
+<p align="center">
+  <img src="UI/Voice-Assistant.png" width="45%" alt="Voice Assistant UI" />
+</p>
+
+The UI overlay is driven entirely by UDP events from the patched `satellite.py`. When the wake word fires, a full-screen voice session mask appears. User speech renders as right-aligned blue bubbles; assistant replies appear as left-aligned gray bubbles. The status bar reflects the current pipeline state in real time.
+
+`assistant_listener.py` listens on port `10701`, feeds events into `StateManager`, and the main render loop updates the screen within the existing 30 FPS dirty-rectangle pipeline — zero additional latency layer.
 
 ---
 

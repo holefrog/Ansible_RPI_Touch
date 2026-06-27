@@ -68,6 +68,11 @@
     - [2. 进度条拖拽状态合并](#2-进度条拖拽状态合并)
     - [3. 删除 render_key 机制](#3-删除-render_key-机制)
     - [4. 音量条交互简化](#4-音量条交互简化)
+- [🎙️ 智能语音助手](#️-智能语音助手)
+  - [技术突破：Hook LVA 源码](#技术突破hook-lva-源码)
+  - [系统选型与试错历程](#系统选型与试错历程)
+  - [架构总览](#架构总览)
+  - [语音助手 UI](#语音助手-ui)
 - [🤝 贡献与许可](#-贡献与许可)
 
 ---
@@ -96,6 +101,13 @@
   <img src="UI/Info.png" width="32%" alt="System Info" />
 </p>
 
+### 🎙️ 智能语音助手 (Voice Assistant)
+<p align="center">
+  <img src="UI/Voice-Assistant.png" width="40%" alt="Voice Assistant UI" />
+</p>
+
+> 实时对话遮罩界面：右侧蓝色气泡为用户语音识别文本，左侧灰色气泡为助手回复，底部状态栏实时显示当前流程阶段（唤醒 → 录音 → 回答）。
+
 ---
 
 ## ✨ 核心特性
@@ -113,6 +125,12 @@
 * 采用 **Waveshare WM8960 Sound Board** 提供高保真 I2S 硬件解码输出。
   > **💡 独家驱动优化**：由于官方只为双麦克风版 (12.288MHz) 的 HAT 提供了 Linux 驱动，导致单麦克风版 (24MHz) 的 Audio Board 在树莓派上录音时会产生时钟错位与纯白噪声。我们针对此 24MHz 单麦克风版本的硬件，彻底修复并生成了专属的底层 Linux 驱动 `wm8960-audio-card.dtbo`，并内置在了 Ansible 中实现**全自动无感部署**与音频路由配置。详细的排查历程与技术细节请见 [RECORD.md](documents/WM8960/RECORD.md)。
 * 独立音量控制与优先级自动管理。
+
+### 🎙️ 全离线本地智能语音助手
+* **零隐私泄露**：完全离线运行，不连接任何外部 AI 服务，声音数据从不离开设备。
+* **中文自然语言控制**：通过 Home Assistant 精准控制智能家居，支持中文复杂分词场景。
+* **零待机额外功耗**：OpenWakeWord 检测待机 CPU 增量 < 2%。
+* **技术突破**：语音助手 UI 的实现，依赖于**对 LVA `satellite.py` 源码的直接 Hook**，向 Python UI 层注入 UDP 事件流，这是官方标准配置无法实现的能力。
 
 ---
 
@@ -538,6 +556,100 @@ should_render = (current_second != self._last_saver_second)
    - `vm.dirty_ratio = 20` & `vm.dirty_background_ratio = 10`：在兼顾掉电安全的前提下，尽可能让系统的磁盘写入操作先在内存中进行最大缓冲，随后由内核在后台无感完成落盘。
 
 在这一系列“榨取”操作后，AI 引擎常驻在内存中，高频读写全在内存中进行，剩下的内存则被 Linux Page Cache 极致利用，使这台播放器的流畅度逼近物理极限！
+
+---
+
+## 🎙️ 智能语音助手
+
+本项目集成了一套完全**离线、本地**运行的智能语音助手，在树莓派 4B 上实现对 Home Assistant 智能家居的中文自然语言控制，不依赖任何云端 AI 服务。
+
+### 技术突破：Hook LVA 源码
+
+触摸屏上的语音助手实时对话 UI，**无法通过 LVA 的官方标准配置实现**。
+
+LVA（Linux Voice Assistant）提供了一套事件回调脚本机制（`LVA_ON_WAKE_WORD`、`LVA_ON_STT_END`、`LVA_ON_TTS_START`、`LVA_ON_TTS_END`），但这些 hook 仅在关键节点触发 shell 脚本，**不携带任何文本内容**——识别结果文字和助手回复文字在官方回调中均不可获取，屏幕上无法显示对话内容。
+
+**我们的突破：直接对 LVA 的 `satellite.py` 源码进行 Hook**，在 Pipeline 内部文本数据可获取的精确位置注入 UDP 发送逻辑，将结构化 JSON 事件推送到端口 `10701`。Python UI 层接收这些事件后，实时将识别文本和助手回复渲染为对话气泡。
+
+```
+LVA satellite.py（已 Hook）
+    ├─ 检测到唤醒词  →  UDP {"event": "awake"}
+    ├─ STT 识别完成  →  UDP {"event": "transcript", "text": "关闭小米台灯"}
+    ├─ TTS 开始合成  →  UDP {"event": "tts-start"}
+    ├─ TTS 文本就绪  →  UDP {"event": "synthesize", "text": "小米台灯已关闭"}
+    └─ TTS 播报结束  →  UDP {"event": "done"}
+                              ↓
+                   assistant_listener.py（监听 10701 端口）
+                              ↓
+                   StateManager → UIManager
+                              ↓
+                   触摸屏实时显示对话气泡遮罩层
+```
+
+已 Hook 的 `satellite.py` 版本控制在 `roles/voiceassistant/files/` 中，由 Ansible 自动部署，保证完整可复现。
+
+---
+
+### 系统选型与试错历程
+
+最终架构经过了两轮完整的技术栈评估与淘汰，以下是真实的技术推导过程。
+
+#### 第一阶段：wyoming-satellite + Whisper + Piper（已废弃）
+
+初版方案采用主流的 Home Assistant 卫星端模式。
+
+**为何放弃：**
+
+| 问题 | 根因 | 结论 |
+|------|------|------|
+| **"2秒必断"重连死循环** | Wyoming 协议在 HA 与 satellite 之间存在 ping/pong 时序竞争，是协议层 bug，调参无效 | 致命，无解 |
+| **Whisper 幻觉死循环** | 自回归 Decoder 在静音/噪音下反复生成 prompt 内容，ARM 上耗时可超 2 分钟 | 树莓派上不可用 |
+| **Piper 中文 TTS 无声** | `ModuleNotFoundError: No module named 'unicode_rbnf'`，中文音素化失败，输出全零字节 WAV | 开箱即坏 |
+| **两个项目均已归档** | `wyoming-satellite` 于 2026 年 1 月 27 日官方归档；`wyoming-piper` 同样停止维护 | 无未来 |
+
+#### 第二阶段：LVA + Sherpa-ONNX（现行 — 稳定）
+
+LVA 完全放弃 Wyoming 协议，改用 **ESPHome 原生 API** 与 HA 通信，从协议层根治了 ping/pong 超时问题。STT/TTS 在树莓派本地通过 **Sherpa-ONNX** 推理，绕开了 HA 虚拟机（J3455 缺少 AVX/AVX2，Whisper 处理一句短句需 5～10 秒）。
+
+| 组件 | 选型 | 理由 |
+|------|------|------|
+| 卫星端协议 | LVA（ESPHome API）| 连接稳定；OHF 官方主导维护 |
+| 唤醒词 | OpenWakeWord `ok_nabu` | LVA 内置；完全开源；无需 API Key |
+| STT | Sherpa-ONNX SenseVoice-int8 | CTC 架构，从根本上不存在幻觉死循环；模型常驻内存 |
+| TTS | Sherpa-ONNX Matcha-Icefall + Vocos | 纯 C++ 内核；中文语音自然；无依赖问题 |
+
+**核心设计原则**：唤醒词触发时立刻暂停音乐 → CPU 全力推理 → TTS 播报完毕恢复。彻底绕开了 AEC（回声消除）需求，待机 CPU 增量不超过 2%。
+
+---
+
+### 架构总览
+
+```
+麦克风（PipeWire）
+    ↓
+LVA（OpenWakeWord — 检测 "ok nabu"）
+    ├─ 已 Hook 的 satellite.py → UDP 10701 → 触摸屏 UI（对话气泡）
+    └─ ESPHome API → Home Assistant Assist Pipeline
+                          ├─ Wyoming Integration → Sherpa-ONNX STT（10300 端口）
+                          ├─ NLU 意图匹配（custom_sentences zh_CN）
+                          └─ Wyoming Integration → Sherpa-ONNX TTS（10200 端口）
+                                                        ↓
+                                               LVA → PipeWire → 喇叭
+```
+
+所有组件均以用户级 Systemd 服务（`player` 用户）运行，由 Ansible 的 `voiceassistant` role 统一管理部署。
+
+---
+
+### 语音助手 UI
+
+<p align="center">
+  <img src="UI/Voice-Assistant.png" width="45%" alt="Voice Assistant UI" />
+</p>
+
+UI 遮罩层完全由已 Hook 的 `satellite.py` 发出的 UDP 事件驱动。检测到唤醒词后，全屏语音会话遮罩弹出；用户语音识别文本以右对齐蓝色气泡显示，助手回复以左对齐灰色气泡显示，底部状态栏实时反映当前 Pipeline 阶段。
+
+`assistant_listener.py` 监听 `10701` 端口，将事件注入 `StateManager`，主渲染循环在现有 30 FPS 脏区渲染 Pipeline 内完成更新，无额外延迟层。
 
 ---
 
