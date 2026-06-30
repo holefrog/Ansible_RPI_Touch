@@ -14,6 +14,16 @@
   ansible.builtin.command: "loginctl enable-linger {{ mediaplayer_user }}"
   changed_when: false
 
+- name: Ensure persistent journal storage directory exists
+  become: yes
+  ansible.builtin.file:
+    path: "/var/log/journal/{{ ansible_machine_id }}"
+    state: directory
+    owner: root
+    group: systemd-journal
+    mode: '2755'
+  notify: restart journald
+
 - name: Set system timezone
   become: yes
   ansible.builtin.command: "timedatectl set-timezone {{ system_timezone | default('America/Vancouver') }}"
