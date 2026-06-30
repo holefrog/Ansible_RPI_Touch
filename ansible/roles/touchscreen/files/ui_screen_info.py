@@ -121,5 +121,7 @@ class InfoScreenRenderer(BaseUIRenderer):
         d_end = tuple(div_cfg.get("end_pos", [228, 290]))
         d_color = self.hex_to_rgb(div_cfg.get("color", "#4D4D4D"))
         draw.line([d_start, d_end], fill=d_color, width=1)
+        # 6. Reboot Button
+        draw_cfg_text("reboot_icon", "\ue8ac", [440, 68], 28, "#E74C3C", is_icon=True)
 
         return img
