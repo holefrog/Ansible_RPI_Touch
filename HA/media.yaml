@@ -1,0 +1,119 @@
+language: "zh-CN"
+lists:
+  volume_level:
+    range:
+      from: 0
+      to: 100
+intents:
+  MediaVolumeUp:
+    data:
+      - sentences:
+          - "增加音量"
+          - "大点声"
+          - "大声点"
+          - "声音大点"
+          - "大点声音"
+  MediaVolumeDown:
+    data:
+      - sentences:
+          - "减小音量"
+          - "降低音量"
+          - "小点声"
+          - "小声点"
+          - "声音小点"
+          - "小点声音"
+  MediaPause:
+    data:
+      - sentences:
+          - "暂停"
+          - "暂停播放"
+          - "停一下"
+  MediaPlay:
+    data:
+      - sentences:
+          - "继续"
+          - "继续播放"
+          - "开始"
+          - "开始播放"
+          - "播放"
+  MediaStop:
+    data:
+      - sentences:
+          - "停止播放"
+          - "停止音乐"
+          - "关掉音乐"
+  MediaRestart:
+    data:
+      - sentences:
+          - "从头播放"
+          - "重新播放"
+          - "重头开始"
+  MediaPreviousTrack:
+    data:
+      - sentences:
+          - "上一首"
+          - "上一个"
+          - "上一曲"
+          - "放上一首"
+          - "退回上一首"
+  MediaNextTrack:
+    data:
+      - sentences:
+          - "下一首"
+          - "下一个"
+          - "下一曲"
+          - "放下一首"
+          - "切歌"
+          - "换一首"
+  MediaSetVolume:
+    data:
+      - sentences:
+          - "音量{volume_level}"
+          - "音量{volume_level}%"
+          - "音量百分之{volume_level}"
+          - "音量调到{volume_level}"
+          - "音量调到{volume_level}%"
+          - "音量调到百分之{volume_level}"
+          - "音量设为{volume_level}"
+          - "音量设为{volume_level}%"
+          - "音量设为百分之{volume_level}"
+          - "声音{volume_level}"
+          - "声音{volume_level}%"
+          - "声音百分之{volume_level}"
+          - "声音调到{volume_level}"
+          - "声音调到{volume_level}%"
+          - "声音调到百分之{volume_level}"
+          - "声音设为{volume_level}"
+          - "声音设为{volume_level}%"
+          - "声音设为百分之{volume_level}"
+  MediaMute:
+    data:
+      - sentences:
+          - "静音"
+          - "音量静音"
+          - "声音静音"
+          - "把音量静音"
+          - "把声音静音"
+  MediaUnmute:
+    data:
+      - sentences:
+          - "取消静音"
+          - "音量恢复"
+          - "恢复音量"
+          - "声音恢复"
+          - "恢复声音"
+  MediaPowerOn:
+    data:
+      - sentences:
+          - "打开音乐"
+          - "打开播放器"
+          - "音乐开机"
+          - "播放器开机"
+  MediaPowerOff:
+    data:
+      - sentences:
+          - "关闭音乐"
+          - "关闭播放器"
+          - "音乐关机"
+          - "播放器关机"
+          - "关掉音乐"

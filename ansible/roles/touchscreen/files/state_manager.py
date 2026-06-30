@@ -114,24 +114,26 @@ class StateManager:
     # 语音结束后是否应恢复播放（业务判断，封装在 StateManager）
     #
     # 背景：唤醒时 touchscreen 主动把播放器 pause 了。
-    # done 后默认应该恢复，但如果用户说的是"暂停"类指令，
-    # HA 已执行 media_pause，此时 LMS 仍是 pause 状态，
+    # done 后默认应该恢复，但如果 HA 已执行 media_pause，
     # touchscreen 不应再补发 play 把它恢复。
     #
-    # 其余指令（停止/下一首/音量/天气等）均由 HA 直接处理，
-    # touchscreen 补发 play 无副作用或符合预期，无需拦截。
-    _PAUSE_KEYWORDS = ("暂停", "停一下", "先停")
+    # 判断依据：检查 HA 的 TTS 回复内容。
+    # HA 执行暂停后会回复类似"已暂停播放"，
+    # 直接检查 HA 的回复比猜测用户说了什么更可靠。
+    _PAUSE_REPLY_KEYWORDS = ("暂停", "已停止")
 
     def should_resume_after_voice(self) -> bool:
         """
         语音会话 done 后，判断 touchscreen 是否需要补发 play 恢复播放。
-        返回 True  → 正常恢复（几点了/下一首/音量/停止等）
-        返回 False → 用户明确要求暂停，HA 已执行 media_pause，不补发 play
+        返回 True  → 正常恢复（几点了/下一首/音量/天气等）
+        返回 False → HA 回复表明已执行暂停，不补发 play
         """
         with self._app_state_lock:
-            transcript = self._voice_session.transcript_text or ""
-        if any(kw in transcript for kw in self._PAUSE_KEYWORDS):
-            logger.info(f"should_resume_after_voice: 用户要求暂停（{transcript}），不补发 play")
+            tts_reply = ""
+            if self._voice_session.history:
+                tts_reply = self._voice_session.history[-1].get("assistant", "")
+        if any(kw in tts_reply for kw in self._PAUSE_REPLY_KEYWORDS):
+            logger.info(f"should_resume_after_voice: HA 已暂停（TTS: {tts_reply}），不补发 play")
             return False
         return True
 

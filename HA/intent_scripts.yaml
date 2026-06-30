@@ -1,0 +1,249 @@
+# ==========================================
+# 🌡️ 传感器与环境 (Sensors & Environment)
+# ==========================================
+CheckTemperatureIntent:
+  speech:
+    text: "当前客厅的温度是 {{ states('sensor.thermostat_temperature') }} 度。"
+
+
+
+HassGetWeather:
+  action:
+    - service: weather.get_forecasts
+      data:
+        type: daily
+      target:
+        entity_id: weather.forecast_coquitlam
+      response_variable: forecast_data
+    - stop: "return forecast"
+      response_variable: forecast_data
+  speech:
+    text: >
+      {% set cond_map = {
+        'clear-night': '晴',
+        'cloudy': '多云',
+        'fog': '有雾',
+        'hail': '有冰雹',
+        'lightning': '有雷电',
+        'lightning-rainy': '雷阵雨',
+        'partlycloudy': '局部多云',
+        'pouring': '倾盆大雨',
+        'rainy': '有雨',
+        'snowy': '有雪',
+        'snowy-rainy': '雨夹雪',
+        'sunny': '晴朗',
+        'windy': '有风'
+      } %}
+      {% set d = day | default('today') %}
+      {% set fc = action_response['weather.forecast_coquitlam'].forecast %}
+      {% set current_cond = cond_map.get(states('weather.forecast_coquitlam'), states('weather.forecast_coquitlam')) %}
+      {% if fc | length > 0 %}
+        {% set target_date = now() %}
+        {% if d == 'tomorrow' %}
+          {% set target_date = now() + timedelta(days=1) %}
+        {% elif d == 'after_tomorrow' %}
+          {% set target_date = now() + timedelta(days=2) %}
+        {% endif %}
+        {% set target_date_str = target_date.strftime('%Y-%m-%d') %}
+        {% set ns = namespace(f=none) %}
+        {% for item in fc %}
+          {% if target_date_str in item.datetime | string and ns.f == none %}
+            {% set ns.f = item %}
+          {% endif %}
+        {% endfor %}
+        {% set f = ns.f %}
+        {% if f %}
+          {% if d == 'tomorrow' %}
+            明天的天气预报：{{ cond_map.get(f.condition, f.condition) }}，最高温度 {{ f.temperature }} 度，最低温度 {{ f.templow }} 度。
+          {% elif d == 'after_tomorrow' %}
+            后天的天气预报：{{ cond_map.get(f.condition, f.condition) }}，最高温度 {{ f.temperature }} 度，最低温度 {{ f.templow }} 度。
+          {% else %}
+            外面当前{{ current_cond }}。今天预计{{ cond_map.get(f.condition, f.condition) }}，最高温度 {{ f.temperature }} 度，最低温度 {{ f.templow }} 度。
+          {% endif %}
+        {% else %}
+          外面当前{{ current_cond }}。抱歉，找不到你要的预报。{% if d == 'today' %}可能因为时间太晚，今天的预报已结束。{% endif %}
+        {% endif %}
+      {% else %}
+        外面当前{{ current_cond }}。抱歉，无法获取天气预报数据。
+      {% endif %}
+
+
+# ==========================================
+# ⏱️ 计时器与提醒 (Timers & Alarms)
+# ==========================================
+# 说法示例："倒计时30秒" "定时10秒钟"（只支持阿拉伯数字）
+# action 里不能用 delay，由 script.start_timer 执行实际等待逻辑
+MyTimerIntent:
+  speech:
+    text: >
+      好的，已经开始{% if hours is defined %}{{ hours }}小时{% endif %}{% if minutes is defined %}{{ minutes }}分钟{% endif %}{% if seconds is defined %}{{ seconds }}秒{% endif %}倒计时。
+  action:
+    - service: script.turn_on
+      target:
+        entity_id: script.start_timer
+      data:
+        variables:
+          seconds: >
+            {% set h = hours | default(0) | int(0) %}
+            {% set m = minutes | default(0) | int(0) %}
+            {% set s = seconds | default(0) | int(0) %}
+            {{ h * 3600 + m * 60 + s }}
+
+
+StopTimerIntent:
+  speech:
+    text: "好的，已停止响铃。"
+  action:
+    - service: script.turn_off
+      target:
+        entity_id: script.start_timer
+    - service: media_player.media_stop
+      target:
+        entity_id: &va_speaker media_player.bedroom_master_raspberry_pi_local_edge_media_player
+
+CancelTimerIntent:
+  speech:
+    text: "好的，已为您取消倒计时。"
+  action:
+    - service: script.turn_off
+      target:
+        entity_id: script.start_timer
+    - service: media_player.media_stop
+      target:
+        entity_id: *va_speaker
+
+# ==========================================
+# 🎵 媒体与播放控制 (Media Controls)
+# ==========================================
+# 媒体控制 (音量大)
+MediaVolumeUp:
+  speech:
+    text: "音量已增加"
+  action:
+    - service: script.smart_media_control
+      data:
+        cmd: "volume_up"
+        dev_id: "{{ _intent.device_id if _intent is defined else '' }}"
+
+# 媒体控制 (音量小)
+MediaVolumeDown:
+  speech:
+    text: "音量已减小"
+  action:
+    - service: script.smart_media_control
+      data:
+        cmd: "volume_down"
+        dev_id: "{{ _intent.device_id if _intent is defined else '' }}"
+
+# 媒体控制 (暂停)
+MediaPause:
+  speech:
+    text: "已暂停播放"
+  action:
+    - service: script.smart_media_control
+      data:
+        cmd: "media_pause"
+        dev_id: "{{ _intent.device_id if _intent is defined else '' }}"
+
+# 媒体控制 (继续播放)
+MediaPlay:
+  speech:
+    text: "继续播放"
+  action:
+    - service: script.smart_media_control
+      data:
+        cmd: "media_play"
+        dev_id: "{{ _intent.device_id if _intent is defined else '' }}"
+
+# 媒体控制 (停止)
+MediaStop:
+  speech:
+    text: "已停止播放"
+  action:
+    - service: script.smart_media_control
+      data:
+        cmd: "media_stop"
+        dev_id: "{{ _intent.device_id if _intent is defined else '' }}"
+
+# 媒体控制 (从头播放)
+MediaRestart:
+  speech:
+    text: "从头开始播放"
+  action:
+    - service: script.smart_media_control
+      data:
+        cmd: "media_seek"
+        dev_id: "{{ _intent.device_id if _intent is defined else '' }}"
+
+# 媒体控制 (上一首)
+MediaPreviousTrack:
+  speech:
+    text: "播放上一首"
+  action:
+    - service: script.smart_media_control
+      data:
+        cmd: "media_previous_track"
+        dev_id: "{{ _intent.device_id if _intent is defined else '' }}"
+
+# 媒体控制 (下一首)
+MediaNextTrack:
+  speech:
+    text: "播放下一首"
+  action:
+    - service: script.smart_media_control
+      data:
+        cmd: "media_next_track"
+        dev_id: "{{ _intent.device_id if _intent is defined else '' }}"
+
+# 媒体控制 (指定音量)
+MediaSetVolume:
+  speech:
+    text: "好的，音量已设置为百分之{{ volume_level | int }}"
+  action:
+    - service: script.smart_media_control
+      data:
+        cmd: "volume_set"
+        vol_level: "{{ (volume_level | int(50)) / 100.0 }}"
+        dev_id: "{{ _intent.device_id if _intent is defined else '' }}"
+
+# 媒体控制 (静音)
+MediaMute:
+  speech:
+    text: "已静音"
+  action:
+    - service: script.smart_media_control
+      data:
+        cmd: "volume_mute_true"
+        dev_id: "{{ _intent.device_id if _intent is defined else '' }}"
+
+# 媒体控制 (取消静音)
+MediaUnmute:
+  speech:
+    text: "已恢复音量"
+  action:
+    - service: script.smart_media_control
+      data:
+        cmd: "volume_mute_false"
+        dev_id: "{{ _intent.device_id if _intent is defined else '' }}"
+
+# 媒体控制 (开机)
+MediaPowerOn:
+  speech:
+    text: "已为您打开播放器"
+  action:
+    - service: script.smart_media_control
+      data:
+        cmd: "turn_on"
+        dev_id: "{{ _intent.device_id if _intent is defined else '' }}"
+
+# 媒体控制 (关机)
+MediaPowerOff:
+  speech:
+    text: "已为您关闭播放器"
+  action:
+    - service: script.smart_media_control
+      data:
+        cmd: "turn_off"
+        dev_id: "{{ _intent.device_id if _intent is defined else '' }}"
+
+# ==========================================

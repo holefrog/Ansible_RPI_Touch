@@ -1,0 +1,228 @@
+# =============================================================
+# scripts/media.yaml
+# 媒体播放脚本集合
+#
+# 调用层级：
+#   外部调用者 (alarm.yaml 等)
+#     └── lumi_alarm_play_all / lumi_alarm_stop_all   ← 公开接口
+#             └── lumi_single_play / lumi_single_stop ← 内部中间层（勿直接调用）
+#                     └── lumi_gateway_control        ← 内部底层（勿直接调用）
+#
+# 注意：HA script 无私有机制，命名仅为约定，请勿直接调用中间层与底层。
+# =============================================================
+
+
+# -------------------------------------------------------------
+# Squeezebox 媒体播放
+# -------------------------------------------------------------
+
+# 媒体播放：使用 Squeezebox 播放指定媒体
+# 参数：data_media (可选) - 完整媒体 URL，缺省播放 test.mp3
+play_squeeze:
+  alias: Play media using squeezebox
+  mode: restart
+
+  sequence:
+    - action: media_player.turn_on
+      continue_on_error: true
+      target:
+        entity_id: media_player.group_player
+    - action: media_player.play_media
+      continue_on_error: true
+      target:
+        entity_id: media_player.group_player
+
+      data:
+        media_content_id: >-
+          {{
+            data_media
+            if data_media is defined and data_media | length > 0
+            else
+            (
+              states('input_text.media_root')
+              | replace(
+                  'unknown',
+                  'http://192.168.50.210:8123/local/media/'
+                )
+            ) ~ 'test.mp3'
+          }}
+
+        media_content_type: music
+        announce: false
+
+
+# 语音播报：使用 Squeezebox 播放 TTS 消息
+# 参数：data_msg (可选) - 播报文字，缺省播放测试语音
+tts_on_squeeze:
+  alias: Play TTS using squeezebox
+  mode: restart
+
+  sequence:
+    - action: media_player.turn_on
+      continue_on_error: true
+      target:
+        entity_id: media_player.group_player
+    - action: tts.speak
+      continue_on_error: true
+
+      target:
+        entity_id: tts.pico_tts_en_gb
+
+      data:
+        cache: true
+        media_player_entity_id: media_player.group_player
+
+        message: >-
+          {%- if data_msg is defined and data_msg | length > 0 -%}
+            {{- data_msg -}}
+          {%- else -%}
+            This is a test.
+          {%- endif -%}
+
+
+# -------------------------------------------------------------
+# Lumi 网关播放控制 — 公开接口
+# -------------------------------------------------------------
+
+# 全部网关：报警音并行播放（设音量 100 后播放）
+# 参数：data_file (可选) - 文件名，缺省 alarm.mp3
+# 7c49eb924bd7 - Floor 1 网关（升级后）
+# 7c49eb93b068 - Floor 2 网关（升级后）
+
+lumi_alarm_play_all:
+  alias: Lumi Alarm Play All
+  mode: restart
+  sequence:
+    - parallel:
+        - action: script.lumi_single_play
+          data:
+            data_mac: "7c49eb924bd7"
+            data_file: "{{ data_file | default('alarm.mp3') }}"
+        - action: script.lumi_single_play
+          data:
+            data_mac: "7c49eb93b068"
+            data_file: "{{ data_file | default('alarm.mp3') }}"
+
+
+# 全部网关：并行停止播放
+lumi_alarm_stop_all:
+  alias: Lumi Alarm Stop All
+  mode: single
+  sequence:
+    # 停止前先强制中止正在运行或排队的播放脚本，防止后续的 playmp3 覆盖停止指令
+    - action: script.turn_off
+      continue_on_error: true
+      target:
+        entity_id: 
+          - script.lumi_alarm_play_all
+          - script.lumi_single_play
+    - parallel:
+        - action: script.lumi_single_stop
+          data:
+            data_mac: "7c49eb924bd7"
+        - action: script.lumi_single_stop
+          data:
+            data_mac: "7c49eb93b068"
+
+
+# -------------------------------------------------------------
+# Lumi 网关播放控制 — 内部实现，请勿直接调用
+# -------------------------------------------------------------
+
+# 单台网关：设音量 100 后播放指定文件
+# 参数：data_mac - 设备 MAC；data_file (可选) - 文件名
+lumi_single_play:
+  alias: Lumi Single Play
+  mode: parallel
+  sequence:
+    - action: script.lumi_gateway_control
+      data:
+        data_mac: "{{ data_mac }}"
+        data_cmd: set_vol
+        data_val: "100"
+    - action: script.lumi_gateway_control
+      data:
+        data_mac: "{{ data_mac }}"
+        data_cmd: playmp3
+        data_val: "{{ data_file | default('alarm.mp3') }}"
+
+
+# 单台网关：停止播放
+# 参数：data_mac - 设备 MAC
+lumi_single_stop:
+  alias: Lumi Single Stop
+  mode: parallel
+  sequence:
+    - action: script.lumi_gateway_control
+      data:
+        data_mac: "{{ data_mac }}"
+        data_cmd: stopplay
+
+
+# 底层 MQTT 控制，映射 data_cmd 到对应 topic 与 payload
+# 参数：data_mac - 设备 MAC；data_cmd - 指令；data_val (可选) - 值
+# 支持的 data_cmd：playmp3 / playwav / set_vol / stopplay
+lumi_gateway_control:
+  alias: Lumi Gateway Control
+  mode: parallel
+  sequence:
+    - action: mqtt.publish
+      data:
+        topic: "lumi/0x{{ data_mac }}/{{ data_cmd }}/set"
+        payload: >-
+          {%- if data_cmd == 'set_vol' -%}
+            {"vol": "{{ data_val | default('50') }}"}
+          {%- elif data_cmd == 'stopplay' -%}
+            {}
+          {%- else -%}
+            {"file": "{{ data_val | default('') }}"}
+          {%- endif -%}
+
+# -------------------------------------------------------------
+# 智能房间媒体控制 (Smart Room Media Control)
+# -------------------------------------------------------------
+smart_media_control:
+  alias: Smart Media Control
+  mode: parallel
+  fields:
+    cmd:
+      description: "Command to execute (e.g. volume_up, media_pause)"
+    vol_level:
+      description: "Volume level if cmd is volume_set"
+    dev_id:
+      description: "Device ID from _intent"
+  sequence:
+    - variables:
+        target_player: >-
+          {% set area = area_id(dev_id) if dev_id else none %}
+          {% set players = area_entities(area) | select('match', '^media_player\\.') | reject('search', '_media_player$') | list if area else [] %}
+          {{ players[0] if players else 'media_player.bedroom_master_raspberry_pi_local_edge' }}
+    - choose:
+        - conditions:
+            - "{{ cmd == 'volume_set' }}"
+          sequence:
+            - service: "media_player.volume_set"
+              target:
+                entity_id: "{{ target_player }}"
+              data:
+                volume_level: "{{ vol_level }}"
+        - conditions:
+            - "{{ cmd == 'volume_mute_true' }}"
+          sequence:
+            - service: "media_player.volume_set"
+              target:
+                entity_id: "{{ target_player }}"
+              data:
+                volume_level: 0
+        - conditions:
+            - "{{ cmd == 'volume_mute_false' }}"
+          sequence:
+            - service: "media_player.volume_set"
+              target:
+                entity_id: "{{ target_player }}"
+              data:
+                volume_level: 0.5
+      default:
+        - service: "media_player.{{ cmd }}"
+          target:
+            entity_id: "{{ target_player }}"
