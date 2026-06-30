@@ -235,7 +235,10 @@ def main():
                     # done：HA 执行了指令，由 StateManager 判断是否应恢复
                     if voice_session.was_playing_before_voice:
                         if state_mgr.should_resume_after_voice():
+                            logger.info("done 事件：恢复播放")
                             input_ctrl.execute_player_cmd(player_state, "play")
+                        else:
+                            logger.info("done 事件：HA 已暂停，不补发 play")
 
             # ── 播放状态判断 ──────────────────────────────────────────────────
             is_playing = player_state is not None and not getattr(player_state, "is_clock", False)
@@ -244,6 +247,7 @@ def main():
             # ── 检查语音助手超时兜底 ──────────────────────────────────────────
             vs = state_mgr.get_voice_session()
             if vs.voice_state != "idle" and vs.close_at > 0 and current_time >= vs.close_at:
+                logger.warning(f"语音会话兜底超时触发 (voice_state={vs.voice_state})")
                 timeout_session = state_mgr.advance_voice_state({"event": "timeout"})
                 ui_mgr.handle_action(
                     {
@@ -257,7 +261,10 @@ def main():
                     player_state,
                 )
                 if timeout_session.was_playing_before_voice:
-                    input_ctrl.execute_player_cmd(player_state, "play")
+                    if state_mgr.should_resume_after_voice():
+                        input_ctrl.execute_player_cmd(player_state, "play")
+                    else:
+                        logger.info("兜底超时：HA 已暂停，不补发 play")
 
             # ── 弹窗超时处理 ──────────────────────────────────────────────────
             ui_mgr.update_timeouts(current_time)
