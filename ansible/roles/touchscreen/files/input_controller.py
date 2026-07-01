@@ -43,7 +43,7 @@ class InputController:
         # ── 0. 全局导航层（仅响应 DOWN）────────────────────────────────────
         if touch_type == "DOWN":
             if active_overlay == Overlay.INFO:
-                if 420 <= x <= 480 and 50 <= y <= 110:
+                if 10 < y < 50 and 370 < x < 420:
                     return {"type": "SYSTEM_REBOOT"}
                 return {"type": "CLOSE_INFO"}
             if active_overlay == Overlay.PHOTO:

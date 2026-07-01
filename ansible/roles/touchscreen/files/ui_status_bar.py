@@ -105,6 +105,21 @@ class StatusBarRenderer(BaseUIRenderer):
         y_time = time_cfg.get("pos", [0, 15])[1]
         draw.text((x_time, y_time), time_str, font=time_font, fill=time_color)
         
+        # 重启按钮 (只在 Info 界面可见)
+        reboot_cfg = status_cfg.get("reboot", {})
+        if reboot_cfg and current_screen == "info":
+            reboot_pos = tuple(reboot_cfg.get("pos", [385, 26]))
+            reboot_size = reboot_cfg.get("font_size", 14) + 6
+            reboot_color = self.hex_to_rgb(reboot_cfg.get("color", "#E74C3C"))
+            reboot_icon = reboot_cfg.get("icon", "\ue8ac")
+            
+            try:
+                reboot_font = self.get_icon_font(reboot_size)
+                draw.text(reboot_pos, reboot_icon, font=reboot_font, fill=reboot_color)
+            except Exception as e:
+                logger.warning(f"无法绘制重启图标: {e}")
+
+        
         # 相册入口图标
         photo_cfg = status_cfg.get("photo_icon", {})
         # 仅在播放或暂停时显示
