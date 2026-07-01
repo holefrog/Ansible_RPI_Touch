@@ -3,8 +3,11 @@
 # v4
 
 import time
+import logging
 from enum import Enum, auto
 from PIL import ImageChops
+
+logger = logging.getLogger("UIManager")
 
 from ui_screen_main import MainUIRenderer
 from ui_screen_info import InfoScreenRenderer
