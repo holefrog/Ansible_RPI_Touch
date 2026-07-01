@@ -28,13 +28,8 @@ class RebootScreenRenderer(BaseUIRenderer):
         font = self.get_font(font_size)
         
         # Calculate text size for centering
-        try:
-            bbox = font.getbbox(text)
-            tw = bbox[2] - bbox[0]
-            th = bbox[3] - bbox[1]
-        except AttributeError:
-            tw, th = draw.textsize(text, font=font)
-            
+        tw, th = self.get_text_size(draw, text, font)
+        
         x = (self.width - tw) // 2
         y = (self.height - th) // 2
         

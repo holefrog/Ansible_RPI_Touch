@@ -86,3 +86,15 @@ class BaseUIRenderer:
         if len(hex_color) in (6, 8):
             return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
         return default
+
+    def get_text_size(self, draw, text, font):
+        """兼容新老版本 Pillow 计算文本宽高的快捷方法"""
+        try:
+            bbox = font.getbbox(text)
+            return bbox[2] - bbox[0], bbox[3] - bbox[1]
+        except AttributeError:
+            if hasattr(draw, 'textbbox'):
+                bbox = draw.textbbox((0, 0), text, font=font)
+                return bbox[2] - bbox[0], bbox[3] - bbox[1]
+            return draw.textsize(text, font=font)
+

@@ -22,10 +22,7 @@ class InfoScreenRenderer(BaseUIRenderer):
             align = cfg.get("align", default_align)
 
             if align == "right":
-                if hasattr(draw, "textlength"):
-                    tw = draw.textlength(text, font=font)
-                else:
-                    tw = draw.textsize(text, font=font)[0]
+                tw, _ = self.get_text_size(draw, text, font)
                 draw.text((pos[0] - tw, pos[1]), text, font=font, fill=color)
             else:
                 draw.text(pos, text, font=font, fill=color)

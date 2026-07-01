@@ -94,10 +94,7 @@ class MaskScreenRenderer(BaseUIRenderer):
         timeout_text  = timeout_cfg.get("text", "稍后自动关闭")
         
         # 动态计算居中 X 坐标
-        if hasattr(draw, "textlength"):
-            timeout_w = draw.textlength(timeout_text, font=timeout_font)
-        else:
-            timeout_w = draw.textsize(timeout_text, font=timeout_font)[0]
+        timeout_w, _ = self.get_text_size(draw, timeout_text, timeout_font)
         timeout_pos = ((self.width - timeout_w) // 2, timeout_cfg.get("pos", [190, 288])[1])
         draw.text(timeout_pos, timeout_text, font=timeout_font, fill=timeout_color + (255,))
 

@@ -240,11 +240,7 @@ class AssistantScreenRenderer(BaseUIRenderer):
                       else self.C_PROCESSING))
         draw.ellipse([cx - radius, cy - radius, cx + radius, cy + radius],
                      fill=glow)
-        try:
-            bb = icon_font.getbbox(icon_char)
-            iw, ih = bb[2] - bb[0], bb[3] - bb[1]
-        except Exception:
-            iw, ih = self.MIC_SIZE, self.MIC_SIZE
+        iw, ih = self.get_text_size(draw, icon_char, icon_font)
         draw.text((cx - iw // 2, cy - ih // 2),
                   icon_char, font=icon_font, fill=color)
 

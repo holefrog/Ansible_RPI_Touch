@@ -15,17 +15,9 @@ def draw_badge(draw, renderer, cfg, icon_char, text_str):
     badge_text_color = renderer.hex_to_rgb(cfg.get("text_color", "#FFFFFF"))
 
     # 计算两部分的总宽度
-    if hasattr(draw, 'textbbox'):
-        bbox_icon = draw.textbbox((0, 0), icon_char, font=i_font)
-        bbox_text = draw.textbbox((0, 0), text_str, font=badge_font)
-        w_icon = bbox_icon[2] - bbox_icon[0]
-        w_text = bbox_text[2] - bbox_text[0]
-        # 统一使用文字高度作为基准，并增加内边距
-        bh = (bbox_text[3] - bbox_text[1]) + 8
-    else:
-        w_icon, h_icon = draw.textsize(icon_char, font=i_font)
-        w_text, h_text = draw.textsize(text_str, font=badge_font)
-        bh = h_text + 8
+    w_icon, h_icon = renderer.get_text_size(draw, icon_char, i_font)
+    w_text, h_text = renderer.get_text_size(draw, text_str, badge_font)
+    bh = h_text + 8
 
     # 内边距和间距
     padding_x = 8
@@ -40,8 +32,8 @@ def draw_badge(draw, renderer, cfg, icon_char, text_str):
     draw.rounded_rectangle((bx, by, bx + bw, by + bh), radius=4, fill=badge_bg)
 
     # 垂直居中对齐
-    icon_y = by + (bh - (draw.textbbox((0,0),icon_char,font=i_font)[3] - draw.textbbox((0,0),icon_char,font=i_font)[1])) // 2
-    text_y = by + (bh - (draw.textbbox((0,0),text_str,font=badge_font)[3] - draw.textbbox((0,0),text_str,font=badge_font)[1])) // 2
+    icon_y = by + (bh - h_icon) // 2
+    text_y = by + (bh - h_text) // 2
 
     # 画图标和文字
     draw.text((bx + padding_x, icon_y), icon_char, font=i_font, fill=badge_text_color)
@@ -57,12 +49,8 @@ def draw_bubble(draw, text, x, y, font, max_w, bg_color, text_color, is_user, pa
     current_line = ""
     for char in text:
         test_line = current_line + char
-        # 使用 textbbox 测量宽度
-        if hasattr(draw, 'textbbox'):
-            bbox = draw.textbbox((0, 0), test_line, font=font)
-            w = bbox[2] - bbox[0]
-        else:
-            w = draw.textsize(test_line, font=font)[0]
+        # 使用 helper 测量宽度
+        w, _ = renderer.get_text_size(draw, test_line, font)
 
         if w <= (max_w - padding * 2):
             current_line = test_line
@@ -77,14 +65,9 @@ def draw_bubble(draw, text, x, y, font, max_w, bg_color, text_color, is_user, pa
     line_heights = []
     line_widths = []
     for line in lines:
-        if hasattr(draw, 'textbbox'):
-            bbox = draw.textbbox((0, 0), line, font=font)
-            line_widths.append(bbox[2] - bbox[0])
-            line_heights.append(bbox[3] - bbox[1])
-        else:
-            w, h = draw.textsize(line, font=font)
-            line_widths.append(w)
-            line_heights.append(h)
+        w, h = renderer.get_text_size(draw, line, font)
+        line_widths.append(w)
+        line_heights.append(h)
 
     bubble_w = max(line_widths) + padding * 2 if line_widths else padding * 2
     # 增加行间距 (假定为 4 像素)

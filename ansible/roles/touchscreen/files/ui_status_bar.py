@@ -47,9 +47,7 @@ class StatusBarRenderer(BaseUIRenderer):
                 draw.text(wifi_pos, icon_conn, font=wifi_icon_font, fill=wifi_color)
                 
                 # 兼容不同版本 PIL 测量宽度
-                icon_w = draw.textlength(icon_conn, font=wifi_icon_font) if hasattr(draw, 'textlength') else (
-                    draw.textbbox((0,0), icon_conn, font=wifi_icon_font)[2] if hasattr(draw, 'textbbox') else draw.textsize(icon_conn, font=wifi_icon_font)[0]
-                )
+                icon_w = self.get_text_size(draw, icon_conn, wifi_icon_font)[0]
                 
                 draw.text((wifi_pos[0] + icon_w, wifi_pos[1] + text_y_offset), wifi_str, font=wifi_font, fill=wifi_color)
             else:
@@ -71,9 +69,7 @@ class StatusBarRenderer(BaseUIRenderer):
             
             draw.text(vol_pos, vol_icon, font=vol_icon_font, fill=vol_color)
             
-            icon_w = draw.textlength(vol_icon, font=vol_icon_font) if hasattr(draw, 'textlength') else (
-                    draw.textbbox((0,0), vol_icon, font=vol_icon_font)[2] if hasattr(draw, 'textbbox') else draw.textsize(vol_icon, font=vol_icon_font)[0]
-                )
+            icon_w = self.get_text_size(draw, vol_icon, vol_icon_font)[0]
                 
             draw.text((vol_pos[0] + icon_w, vol_pos[1] + text_y_offset), vol_str, font=vol_font, fill=vol_color)
             
@@ -95,11 +91,7 @@ class StatusBarRenderer(BaseUIRenderer):
         time_color = self.hex_to_rgb(time_cfg.get("color", "#FFFFFF"))
         time_str = time.strftime("%H:%M")
         
-        if hasattr(draw, 'textbbox'):
-            bbox_time = draw.textbbox((0, 0), time_str, font=time_font)
-            w_time = bbox_time[2] - bbox_time[0]
-        else:
-            w_time = draw.textsize(time_str, font=time_font)[0]
+        w_time = self.get_text_size(draw, time_str, time_font)[0]
             
         x_time = (self.width - w_time) // 2
         y_time = time_cfg.get("pos", [0, 15])[1]

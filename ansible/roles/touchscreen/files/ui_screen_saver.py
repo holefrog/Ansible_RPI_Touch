@@ -143,14 +143,8 @@ class ScreenSaverRenderer(BaseUIRenderer):
         colon_color = self.hex_to_rgb(colon_cfg.get("color", "#FFFFFF"))
         
         # 获得单根管子的物理步进跨度（减去10使其产生互锁的紧凑感）
-        bbox_8 = draw.textbbox((0, 0), "8", font=time_font)
-        if hasattr(draw, "textlength"):
-            tube_spacing = draw.textlength("8", font=time_font) - 10
-        else:
-            tube_spacing = draw.textsize("8", font=time_font)[0] - 10
-        
-        bbox_colon = draw.textbbox((0, 0), ":", font=colon_font)
-        colon_w = bbox_colon[2] - bbox_colon[0]
+        tube_spacing = self.get_text_size(draw, "8", time_font)[0] - 10
+        colon_w = self.get_text_size(draw, ":", colon_font)[0]
         
         gap = 10  # 冒号两边的间距
         
