@@ -10,7 +10,7 @@ class RebootScreenRenderer(BaseUIRenderer):
     显示纯黑底色或配置的颜色，及提示文字，防止 UI 假死
     """
     def __init__(self, display_ctx, ui_cfg):
-        super().__init__(display_ctx)
+        super().__init__(display_ctx, ui_cfg)
         self.cfg = ui_cfg.get("screens", {}).get("reboot", {})
         self.bg_color = self.hex_to_rgb(self.cfg.get("bg_color", "#000000"))
 
