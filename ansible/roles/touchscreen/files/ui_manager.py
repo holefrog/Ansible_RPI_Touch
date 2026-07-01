@@ -17,6 +17,7 @@ from ui_screen_photo import PhotoScreenRenderer
 from ui_screen_mask import MaskScreenRenderer
 from ui_volume_popup import VolumePopupRenderer
 from ui_screen_assistant import AssistantScreenRenderer
+from ui_screen_reboot import RebootScreenRenderer
 
 
 class Overlay(Enum):
@@ -26,6 +27,7 @@ class Overlay(Enum):
     INFO = auto()
     PHOTO = auto()
     ASSISTANT = auto()
+    REBOOT = auto()
 
 
 class UIManager:
@@ -48,6 +50,7 @@ class UIManager:
         self.ui_mask       = MaskScreenRenderer(display_ctx, cfg.get("ui", {}))
         self.ui_volume     = VolumePopupRenderer(display_ctx, cfg.get("ui", {}))
         self.ui_assistant  = AssistantScreenRenderer(display_ctx, cfg.get("ui", {}))
+        self.ui_reboot     = RebootScreenRenderer(display_ctx, cfg.get("ui", {}))
 
         # 2. 浮层状态：单一枚举变量，强制互斥
         self.active_overlay = Overlay.NONE
@@ -145,7 +148,8 @@ class UIManager:
         elif act_type == "SYSTEM_REBOOT":
             import subprocess
             logger.info("Reboot requested via UI. Executing sudo reboot...")
-            self.active_overlay = Overlay.NONE
+            self.active_overlay = Overlay.REBOOT
+            self.overlay_timer = current_time
             subprocess.Popen(["sudo", "reboot"])
 
         elif act_type == "SHOW_PHOTO":
@@ -284,6 +288,11 @@ class UIManager:
             if screen_saver.is_off:
                 screen_saver.wake()
             img = self.ui_photo.render(player_state)
+
+        elif overlay == Overlay.REBOOT:
+            if screen_saver.is_off:
+                screen_saver.wake()
+            img = self.ui_reboot.render()
 
         elif not is_playing:
             # 屏保时钟

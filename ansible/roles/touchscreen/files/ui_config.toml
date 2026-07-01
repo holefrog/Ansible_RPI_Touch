@@ -383,6 +383,18 @@ max_turns       = 5             # 最多显示几轮对话
     text_gray  = "#828596"
     accent     = "#64B4FF"      # 处理中气泡文字（蓝）
 
+# ==========================================
+# 8. 重启提示屏幕 (Reboot Screen)
+# ==========================================
+[screens.reboot]
+bg_color = "#000000"
+
+    [screens.reboot.title]
+    text = "System Rebooting..."
+    font_size = 24
+    color = "#E74C3C"
+
+
     [screens.assistant.mic]
     icon_size  = 72             # 麦克风图标字号
     icon_char  = "\ue029"       # Material Icons: mic
