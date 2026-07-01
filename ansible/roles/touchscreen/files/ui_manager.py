@@ -145,7 +145,8 @@ class UIManager:
         elif act_type == "SYSTEM_REBOOT":
             import subprocess
             logger.info("Reboot requested via UI. Executing sudo reboot...")
-            subprocess.run(["sudo", "reboot"])
+            self.active_overlay = Overlay.NONE
+            subprocess.Popen(["sudo", "reboot"])
 
         elif act_type == "SHOW_PHOTO":
             self.active_overlay = Overlay.PHOTO
