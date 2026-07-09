@@ -118,7 +118,7 @@ The official WM8960 driver was designed for the **dual-mic HAT** (12.288 MHz cry
 ### ✅ Hardware Checklist
 
 - [ ] **Raspberry Pi 4B** (2GB+, 4GB recommended)
-  - Other RPi models (4, 5, CM4) may work but are untested; see [Compatibility Matrix](COMPATIBILITY.md)
+  - Other RPi models (4, 5, CM4) may work but are untested;
   
 - [ ] **Waveshare WM8960 Audio Board**
   - Single-mic version (not the dual-mic HAT)
@@ -152,8 +152,8 @@ The official WM8960 driver was designed for the **dual-mic HAT** (12.288 MHz cry
   lsb_release -cs   # Should output: trixie
   ```
   
-  > **Note:** Trixie is the latest (2024). For stability, Bookworm (2023) is also supported. See [OS Compatibility](COMPATIBILITY.md).
-
+  > **Note:** Trixie is the latest (2024). 
+  
 - [ ] **Network:** WiFi or Ethernet connected
   ```bash
   # Verify:
@@ -961,7 +961,7 @@ A:
 
 **Q: Can I use this with Raspberry Pi 5?**
 
-A: Untested. RPi 5 has different GPIO mapper and faster CPU. See [Compatibility Matrix](COMPATIBILITY.md). You're welcome to test and report!
+A: Untested. RPi 5 has different GPIO mapper and faster CPU. You're welcome to test and report!
 
 **Q: How do I update the touchscreen UI?**
 
@@ -1067,7 +1067,7 @@ See [Wyoming Evaluation Document](documents/VOICE_ASSISTANT_EVALUATION.md) for d
 
 ## 🤝 Contributing
 
-Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for code style, testing, and PR process.
+Contributions welcome! 
 
 ---
 
