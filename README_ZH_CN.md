@@ -4,6 +4,38 @@
 
 ---
 
+## 🖼️ UI 预览 (Interface Gallery)
+
+### 🎼 多音源无缝切换 (Audio Sources)
+<p align="center">
+  <img src="UI/Src-Airplay.png" width="32%" alt="AirPlay" />
+  <img src="UI/Src-Bluetooth-1.png" width="32%" alt="Bluetooth" />
+  <img src="UI/Src_Squeeze-LMS.png" width="32%" alt="Squeezelite" />
+</p>
+
+### 🎛️ 触控交互与遮罩 (Interactive Overlays)
+<p align="center">
+  <img src="UI/Main-Volume.png" width="32%" alt="Volume Overlay" />
+  <img src="UI/Main-mask.png" width="32%" alt="Action Mask" />
+  <img src="UI/Src-Bluetooth-2.png" width="32%" alt="Bluetooth Menu" />
+</p>
+
+### 📻 待机与信息屏 (Standby & Info)
+<p align="center">
+  <img src="UI/Screensaver.png" width="32%" alt="Nixie Tube Screensaver" />
+  <img src="UI/Photo-Screen.png" width="32%" alt="Photo Frame" />
+  <img src="UI/Info.png" width="32%" alt="System Info" />
+</p>
+
+### 🎙️ 智能语音助手 (Voice Assistant)
+<p align="center">
+  <img src="UI/Voice-Assistant.png" width="40%" alt="Voice Assistant UI" />
+</p>
+
+> 实时对话遮罩界面：右侧蓝色气泡为用户语音识别文本，左侧灰色气泡为助手回复，底部状态栏实时显示当前流程阶段（唤醒 → 录音 → 回答）。
+
+---
+
 ## 🎯 你将获得什么(30秒速写)
 
 将树莓派4B打造成**专业级高保真媒体播放器**，配备触摸屏UI。
